@@ -645,4 +645,50 @@ class TeacherController extends Controller
             ], 500);
         }
     }
+
+    public function monthlyCalendar($year, $month)
+    {
+        try {
+            $teacher = auth()->user();
+            
+            if (!$teacher->isTeacher()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            if (!is_numeric($year) || !is_numeric($month) || $month < 1 || $month > 12) {
+                return response()->json([
+                    'message' => 'Nieprawidłowy rok lub miesiąc.'
+                ], 422);
+            }
+
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+            $lessons = Lesson::forTeacher($teacher->id)
+                ->whereBetween('start_time', [$startDate, $endDate])
+                ->with('student')
+                ->orderBy('start_time')
+                ->get();
+
+            return response()->json([
+                'lessons' => $lessons,
+                'period' => [
+                    'start' => $startDate->toDateString(),
+                    'end' => $endDate->toDateString(),
+                    'year' => $year,
+                    'month' => $month
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Teacher monthly calendar error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

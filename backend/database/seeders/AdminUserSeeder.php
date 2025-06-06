@@ -18,7 +18,6 @@ class AdminUserSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // Przykładowy nauczyciel
         User::create([
             'name' => 'Anna Kowalska',
             'email' => 'anna@artyz.pl',
@@ -28,7 +27,6 @@ class AdminUserSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // Przykładowy student
         User::create([
             'name' => 'Maria Nowak',
             'email' => 'maria@artyz.pl',

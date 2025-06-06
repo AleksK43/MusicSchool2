@@ -81,6 +81,14 @@ class Lesson extends Model
                     ->where('status', '!=', self::STATUS_CANCELLED);
     }
 
+    public function scopeInMonth($query, $year, $month)
+    {
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        return $query->whereBetween('start_time', [$startDate, $endDate]);
+    }
+
     public function scopeInDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('start_time', [$startDate, $endDate]);

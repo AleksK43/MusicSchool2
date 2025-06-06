@@ -49,6 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Dostępność nauczyciela
         Route::get('/availability', [TeacherController::class, 'getTeacherAvailability']);
+        
+        // Monthly calendar
+        Route::get('calendar/{year}/{month}', [TeacherController::class, 'monthlyCalendar']);
     });
 
     // Student routes
@@ -70,6 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pending-approvals', [StudentController::class, 'pendingApprovals']);
         Route::patch('/lessons/{lesson}/approve-reschedule', [StudentController::class, 'approveReschedule']);
         Route::patch('/lessons/{lesson}/reject-reschedule', [StudentController::class, 'rejectReschedule']);
+        
+        // Monthly calendar
+        Route::get('calendar/{year}/{month}', [StudentController::class, 'monthlyCalendar']);
     });
     
     // Shared routes (dla wszystkich zalogowanych użytkowników)

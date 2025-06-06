@@ -1,4 +1,3 @@
-// src/pages/student/Dashboard/StudentDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -191,6 +190,15 @@ const StudentDashboard = ({ onNavigate }) => {
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
               >
                 Umów lekcję
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onNavigate('student-calendar')}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
+              >
+                📅 Kalendarz
               </motion.button>
               
               <motion.button

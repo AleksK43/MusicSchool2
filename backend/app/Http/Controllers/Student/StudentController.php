@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class StudentController extends Controller
 {
@@ -552,6 +552,61 @@ class StudentController extends Controller
             return response()->json([
                 'error' => 'Internal server error',
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function monthlyCalendar($year, $month)
+    {
+        try {
+            $student = auth()->user();
+            
+            if (!$student->isStudent()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            // Walidacja roku i miesiąca
+            if (!is_numeric($year) || !is_numeric($month) || $month < 1 || $month > 12) {
+                return response()->json([
+                    'message' => 'Nieprawidłowy rok lub miesiąc.'
+                ], 422);
+            }
+
+            // Utworzenie dat dla całego miesiąca
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+            $lessons = Lesson::forStudent($student->id)
+                ->inDateRange($startDate, $endDate)
+                ->with(['teacher' => function($query) {
+                    $query->select('id', 'name', 'instrument');
+                }])
+                ->orderBy('start_time')
+                ->get();
+
+            return response()->json([
+                'lessons' => $lessons,
+                'period' => [
+                    'start' => $startDate->toDateString(),
+                    'end' => $endDate->toDateString(),
+                    'year' => (int)$year,
+                    'month' => (int)$month
+                ],
+                'summary' => [
+                    'total_lessons' => $lessons->count(),
+                    'scheduled' => $lessons->where('status', 'scheduled')->count(),
+                    'pending' => $lessons->where('status', 'pending')->count(),
+                    'completed' => $lessons->where('status', 'completed')->count()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Student monthly calendar error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => 'Nie udało się pobrać kalendarza.'
             ], 500);
         }
     }
