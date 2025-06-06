@@ -1,21 +1,29 @@
 version: '3.8'
 
 services:
-  # MySQL Database
+  # MariaDB Database (lighter than MySQL)
   database:
-    image: mysql:8.0
+    image: mariadb:10.11
     container_name: artyz_database
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: artyz_db
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_USER: artyz_user
-      MYSQL_PASSWORD: artyz_password
+      MARIADB_DATABASE: artyz_db
+      MARIADB_ROOT_PASSWORD: root_password
+      MARIADB_USER: artyz_user
+      MARIADB_PASSWORD: artyz_password
+      MARIADB_AUTO_UPGRADE: 1
+      MARIADB_INITDB_SKIP_TZINFO: 1
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
       - ./backend/database/init:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      timeout: 5s
+      retries: 3
+      interval: 10s
+      start_period: 20s
     networks:
       - artyz_network
 
@@ -32,11 +40,12 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     environment:
       - APP_NAME=Artyz
       - APP_ENV=local
-      - APP_KEY=base64:your-32-character-secret-key-here
+      - APP_KEY=
       - APP_DEBUG=true
       - APP_URL=http://localhost:8000
       - DB_CONNECTION=mysql
@@ -46,6 +55,12 @@ services:
       - DB_USERNAME=artyz_user
       - DB_PASSWORD=artyz_password
       - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      timeout: 10s
+      retries: 3
+      interval: 30s
+      start_period: 40s
     networks:
       - artyz_network
 
@@ -71,7 +86,7 @@ services:
       - artyz_network
 
 volumes:
-  mysql_data:
+  mariadb_data:
 
 networks:
   artyz_network:

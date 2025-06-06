@@ -35,7 +35,6 @@ class AuthService {
         const errorData = await response.json().catch(() => ({ message: 'Network error' }));
         console.error('🌐 API error response:', errorData);
         
-        // Sprawdź czy to błędy walidacji (422)
         if (response.status === 422 && errorData.errors) {
           const validationErrors = Object.values(errorData.errors).flat().join(', ');
           throw new Error(validationErrors);
@@ -109,7 +108,7 @@ class AuthService {
         return null;
       }
 
-      const response = await this.apiCall('/user');
+      const response = await this.apiCall('/me');
       console.log('🔔 Current user response:', response);
       
       if (response.user) {
