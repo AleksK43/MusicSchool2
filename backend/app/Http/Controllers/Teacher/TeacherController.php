@@ -14,10 +14,20 @@ class TeacherController extends Controller
     public function dashboard()
     {
         try {
+            Log::info('Teacher dashboard called', ['user_id' => auth()->id()]);
+            
             $teacher = auth()->user();
+            
+            if (!$teacher) {
+                Log::error('No authenticated user');
+                return response()->json(['message' => 'Nie jesteś zalogowany.'], 401);
+            }
+            
+            Log::info('User role: ' . $teacher->role);
             
             // Sprawdź czy użytkownik to nauczyciel
             if (!$teacher->isTeacher()) {
+                Log::warning('User is not teacher');
                 return response()->json([
                     'message' => 'Dostęp zabroniony. Wymagane uprawnienia nauczyciela.'
                 ], 403);
@@ -65,6 +75,7 @@ class TeacherController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Teacher dashboard error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
                 'error' => 'Internal server error',

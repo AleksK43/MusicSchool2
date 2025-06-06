@@ -8,14 +8,26 @@ import About from '../About/About';
 import Courses from '../Courses/Courses';
 import Teachers from '../Teachers/Teachers';
 import Contact from '../Contact/Contact';
-import AdminDashboard from '../../../components/admin/Dashboard/AdminDashboard';
+
+// Admin Components
+import AdminDashboard from '../../admin/Dashboard/AdminDashboard';
 import AdminUsers from '../../admin/Users/AdminUsers';
+
+// Student Components
+import StudentDashboard from '../../student/Dashboard/StudentDashboard';
+import StudentBookLesson from '../../student/BookLesson/StudentBookLesson';
+import StudentPendingApprovals from '../../student/Approvals/StudentPendingApprovals';
+
+// Teacher Components
+import TeacherDashboard from '../../teacher/Dashboard/TeacherDashboard';
+import TeacherRequests from '../../teacher/Requests/TeacherRequests';
 
 const Home = () => {
   const [currentPage, setCurrentPage] = useState('home');
 
   const renderPage = () => {
     switch(currentPage) {
+      // Public pages
       case 'about':
         return <About onNavigate={setCurrentPage} />;
       case 'courses':
@@ -24,10 +36,98 @@ const Home = () => {
         return <Teachers onNavigate={setCurrentPage} />;
       case 'contact':
         return <Contact onNavigate={setCurrentPage} />;
+      
+      // Admin pages
       case 'admin-dashboard':
         return <AdminDashboard onNavigate={setCurrentPage} />;
       case 'admin-users':
         return <AdminUsers onNavigate={setCurrentPage} />;
+      
+      // Student pages
+      case 'student-dashboard':
+        return <StudentDashboard onNavigate={setCurrentPage} />;
+      case 'student-book-lesson':
+        return <StudentBookLesson onNavigate={setCurrentPage} />;
+      case 'student-approvals':
+        return <StudentPendingApprovals onNavigate={setCurrentPage} />;
+      case 'student-calendar':
+        // TODO: Implement StudentCalendar component
+        return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl text-white mb-4">Kalendarz studenta</h1>
+            <p className="text-slate-400 mb-8">Komponent w przygotowaniu</p>
+            <button
+              onClick={() => setCurrentPage('student-dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+            >
+              Powrót do dashboardu
+            </button>
+          </div>
+        </div>;
+      case 'student-lessons':
+        // TODO: Implement StudentLessons component
+        return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl text-white mb-4">Historia lekcji</h1>
+            <p className="text-slate-400 mb-8">Komponent w przygotowaniu</p>
+            <button
+              onClick={() => setCurrentPage('student-dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+            >
+              Powrót do dashboardu
+            </button>
+          </div>
+        </div>;
+      
+      // Teacher pages
+      case 'teacher-dashboard':
+        return <TeacherDashboard onNavigate={setCurrentPage} />;
+      case 'teacher-requests':
+        return <TeacherRequests onNavigate={setCurrentPage} />;
+      case 'teacher-create-lesson':
+        // TODO: Implement TeacherCreateLesson component
+        return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl text-white mb-4">Dodaj lekcję</h1>
+            <p className="text-slate-400 mb-8">Komponent w przygotowaniu</p>
+            <button
+              onClick={() => setCurrentPage('teacher-dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+            >
+              Powrót do dashboardu
+            </button>
+          </div>
+        </div>;
+      case 'teacher-calendar':
+        // TODO: Implement TeacherCalendar component
+        return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl text-white mb-4">Kalendarz nauczyciela</h1>
+            <p className="text-slate-400 mb-8">Komponent w przygotowaniu</p>
+            <button
+              onClick={() => setCurrentPage('teacher-dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+            >
+              Powrót do dashboardu
+            </button>
+          </div>
+        </div>;
+      case 'teacher-students':
+        // TODO: Implement TeacherStudents component
+        return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl text-white mb-4">Moi studenci</h1>
+            <p className="text-slate-400 mb-8">Komponent w przygotowaniu</p>
+            <button
+              onClick={() => setCurrentPage('teacher-dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+            >
+              Powrót do dashboardu
+            </button>
+          </div>
+        </div>;
+      
+      // Default home page
       default:
         return (
           <motion.div

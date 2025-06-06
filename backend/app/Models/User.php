@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,11 +29,10 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed',
         'is_active' => 'boolean',
     ];
 
-    // Helper methods
+    // Metody sprawdzające role
     public function isAdmin()
     {
         return $this->role === 'admin';
@@ -48,6 +48,7 @@ class User extends Authenticatable
         return $this->role === 'student';
     }
 
+    // Relacje dla lekcji
     public function teacherLessons()
     {
         return $this->hasMany(Lesson::class, 'teacher_id');
