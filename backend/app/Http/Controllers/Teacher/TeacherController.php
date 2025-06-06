@@ -123,6 +123,58 @@ class TeacherController extends Controller
         }
     }
 
+    public function calendarRange(Request $request)
+    {
+        try {
+            $teacher = auth()->user();
+            
+            if (!$teacher->isTeacher()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            $request->validate([
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+            ]);
+
+            $startDate = Carbon::parse($request->start_date)->startOfDay();
+            $endDate = Carbon::parse($request->end_date)->endOfDay();
+
+            $lessons = Lesson::forTeacher($teacher->id)
+                ->whereBetween('start_time', [$startDate, $endDate])
+                ->with(['student' => function($query) {
+                    $query->select('id', 'name', 'email');
+                }])
+                ->orderBy('start_time')
+                ->get();
+
+            return response()->json([
+                'lessons' => $lessons,
+                'period' => [
+                    'start' => $startDate->toDateString(),
+                    'end' => $endDate->toDateString()
+                ],
+                'total_lessons' => $lessons->count(),
+                'stats' => [
+                    'scheduled' => $lessons->where('status', 'scheduled')->count(),
+                    'completed' => $lessons->where('status', 'completed')->count(),
+                    'pending' => $lessons->where('status', 'pending')->count(),
+                    'cancelled' => $lessons->where('status', 'cancelled')->count(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Teacher calendar range error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function lessons(Request $request)
     {
         try {
@@ -646,7 +698,7 @@ class TeacherController extends Controller
         }
     }
 
-    public function monthlyCalendar($year, $month)
+    public function monthlyCalendar(Request $request, $year, $month)
     {
         try {
             $teacher = auth()->user();
@@ -657,6 +709,7 @@ class TeacherController extends Controller
                 ], 403);
             }
 
+            // Walidacja roku i miesiąca
             if (!is_numeric($year) || !is_numeric($month) || $month < 1 || $month > 12) {
                 return response()->json([
                     'message' => 'Nieprawidłowy rok lub miesiąc.'
@@ -677,8 +730,8 @@ class TeacherController extends Controller
                 'period' => [
                     'start' => $startDate->toDateString(),
                     'end' => $endDate->toDateString(),
-                    'year' => $year,
-                    'month' => $month
+                    'year' => (int)$year,
+                    'month' => (int)$month
                 ]
             ]);
 

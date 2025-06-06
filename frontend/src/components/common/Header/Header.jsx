@@ -1,11 +1,14 @@
 // src/components/common/Header/Header.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import LoginModal from '../Modal/LoginModal';
 import RegisterModal from '../Modal/RegisterModal';
 
-const Header = ({ onNavigate }) => {
+const Header = () => { // Usuń onNavigate prop
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -36,27 +39,78 @@ const Header = ({ onNavigate }) => {
   };
 
   const handleNavigation = (page) => {
-    if (onNavigate) {
-      onNavigate(page);
+    switch(page) {
+      case 'admin-dashboard':
+        navigate('/admin/dashboard');
+        break;
+      case 'admin-users':
+        navigate('/admin/users');
+        break;
+      case 'admin-registrations':
+        navigate('/admin/registrations');
+        break;
+      case 'teacher-dashboard':
+        navigate('/teacher/dashboard');
+        break;
+      case 'student-dashboard':
+        navigate('/student/dashboard');
+        break;
+      case 'home':
+        navigate('/');
+        break;
+      case 'about':
+      case 'courses':
+      case 'teachers':
+      case 'contact':
+        // Jeśli jesteśmy na stronie głównej, użyj global function
+        if (location.pathname === '/' || location.pathname === '/home') {
+          if (window.setHomeCurrentPage) {
+            window.setHomeCurrentPage(page);
+          }
+          // Scroll to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          // Jeśli jesteśmy na innej stronie, przekieruj do home z hash
+          navigate(`/#${page}`);
+        }
+        break;
+      default:
+        navigate('/');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLoginSuccess = (userData) => {
-    // Sprawdź czy użytkownik to admin i przekieruj
-    if (userData.role === 'admin') {
-      onNavigate('admin-dashboard');
+    closeModals();
+    // Przekieruj na odpowiedni dashboard na podstawie roli
+    switch(userData.role) {
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      case 'teacher':
+        navigate('/teacher/dashboard');
+        break;
+      case 'student':
+        navigate('/student/dashboard');
+        break;
+      default:
+        navigate('/');
     }
   };
 
   const handleRegistrationSuccess = (data) => {
     closeModals();
+    // Po rejestracji zostań na stronie głównej
+    navigate('/');
   };
 
   const handleLogout = async () => {
-    await logout();
-    setShowUserMenu(false);
-    onNavigate('home');
+    try {
+      await logout();
+      setShowUserMenu(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const navigationItems = [
@@ -124,7 +178,7 @@ const Header = ({ onNavigate }) => {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2 }}
-                  onClick={() => handleNavigation('admin-dashboard')}
+                  onClick={() => navigate('/admin/dashboard')}
                   className={`font-light tracking-wide relative group transition-all duration-300 ${
                     isScrolled 
                       ? 'text-blue-400 hover:text-blue-300' 
@@ -141,7 +195,7 @@ const Header = ({ onNavigate }) => {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2 }}
-                  onClick={() => handleNavigation('teacher-dashboard')}
+                  onClick={() => navigate('/teacher/dashboard')}
                   className={`font-light tracking-wide relative group transition-all duration-300 ${
                     isScrolled 
                       ? 'text-green-400 hover:text-green-300' 
@@ -158,7 +212,7 @@ const Header = ({ onNavigate }) => {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2 }}
-                  onClick={() => handleNavigation('student-dashboard')}
+                  onClick={() => navigate('/student/dashboard')}
                   className={`font-light tracking-wide relative group transition-all duration-300 ${
                     isScrolled 
                       ? 'text-purple-400 hover:text-purple-300' 
@@ -220,7 +274,7 @@ const Header = ({ onNavigate }) => {
                         <motion.button
                           whileHover={{ x: 4 }}
                           onClick={() => {
-                            handleNavigation('admin-dashboard');
+                            navigate('/admin/dashboard');
                             setShowUserMenu(false);
                           }}
                           className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 flex items-center space-x-2"
@@ -236,7 +290,7 @@ const Header = ({ onNavigate }) => {
                         <motion.button
                           whileHover={{ x: 4 }}
                           onClick={() => {
-                            handleNavigation('teacher-dashboard');
+                            navigate('/teacher/dashboard');
                             setShowUserMenu(false);
                           }}
                           className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 flex items-center space-x-2"
@@ -252,7 +306,7 @@ const Header = ({ onNavigate }) => {
                         <motion.button
                           whileHover={{ x: 4 }}
                           onClick={() => {
-                            handleNavigation('student-dashboard');
+                            navigate('/student/dashboard');
                             setShowUserMenu(false);
                           }}
                           className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 flex items-center space-x-2"

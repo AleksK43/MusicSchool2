@@ -23,50 +23,85 @@ export const AuthProvider = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
+      setIsLoading(true);
+      console.log('🔐 Initializing auth...');
+      
+      // Sprawdź czy token istnieje w localStorage
+      const token = localStorage.getItem('auth_token');
+      console.log('🔐 Token found:', !!token);
+      
+      if (!token) {
+        console.log('🔐 No token found, user not authenticated');
+        setIsAuthenticated(false);
+        setUser(null);
+        return;
+      }
+
+      // Sprawdź czy token jest ważny
       const currentUser = await AuthService.getCurrentUser();
+      console.log('🔐 Current user response:', currentUser);
+      
       if (currentUser) {
+        console.log('🔐 User authenticated:', currentUser);
         setUser(currentUser);
         setIsAuthenticated(true);
+      } else {
+        console.log('🔐 Token invalid, clearing auth');
+        localStorage.removeItem('auth_token');
+        setIsAuthenticated(false);
+        setUser(null);
       }
     } catch (error) {
-      console.error('Failed to initialize auth:', error);
+      console.error('🔐 Auth initialization failed:', error);
+      localStorage.removeItem('auth_token');
+      setIsAuthenticated(false);
+      setUser(null);
     } finally {
       setIsLoading(false);
+      console.log('🔐 Auth initialization complete');
     }
   };
 
   const login = async (credentials) => {
     try {
+      console.log('🔐 Logging in...');
       const response = await AuthService.login(credentials);
+      console.log('🔐 Login response:', response);
+      
       setUser(response.user);
       setIsAuthenticated(true);
       return response;
     } catch (error) {
+      console.error('🔐 Login failed:', error);
+      setIsAuthenticated(false);
+      setUser(null);
       throw error;
     }
   };
 
   const register = async (userData) => {
-    console.log('🔔 AuthContext.register called with:', userData);
+    console.log('🔐 Registering user:', userData);
     
     try {
-      // Użyj AuthService.register zamiast bezpośrednio apiCall
       const response = await AuthService.register(userData);
-      console.log('🔔 AuthService.register response:', response);
+      console.log('🔐 Register response:', response);
       return response;
     } catch (error) {
-      console.error('🔔 AuthContext.register error:', error);
+      console.error('🔐 Register failed:', error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
+      console.log('🔐 Logging out...');
       await AuthService.logout();
+    } catch (error) {
+      console.error('🔐 Logout error:', error);
+    } finally {
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Logout error:', error);
+      console.log('🔐 Logout complete');
     }
   };
 
@@ -77,6 +112,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    initializeAuth,
     isAdmin: () => user?.role === 'admin',
     isTeacher: () => user?.role === 'teacher',
     isStudent: () => user?.role === 'student',

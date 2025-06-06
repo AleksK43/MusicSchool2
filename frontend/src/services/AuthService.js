@@ -21,15 +21,21 @@ class AuthService {
       ...options
     };
 
-    console.log('🔔 Making API call to:', url, 'with config:', config);
+    console.log('🌐 Making API call to:', url);
 
     try {
       const response = await fetch(url, config);
-      console.log('🔔 API response status:', response.status);
+      console.log('🌐 API response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('🔔 API error response:', errorData);
+        // Jeśli token jest nieważny (401), usuń go
+        if (response.status === 401) {
+          console.log('🌐 Unauthorized, removing token');
+          localStorage.removeItem(this.tokenKey);
+        }
+        
+        const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        console.error('🌐 API error response:', errorData);
         
         // Sprawdź czy to błędy walidacji (422)
         if (response.status === 422 && errorData.errors) {
@@ -41,10 +47,10 @@ class AuthService {
       }
 
       const data = await response.json();
-      console.log('🔔 API success response:', data);
+      console.log('🌐 API success response:', data);
       return data;
     } catch (error) {
-      console.error('🔔 API call failed:', error);
+      console.error('🌐 API call failed:', error);
       throw error;
     }
   }
@@ -73,6 +79,7 @@ class AuthService {
       });
 
       if (response.token) {
+        console.log('🔔 Saving token to localStorage');
         localStorage.setItem(this.tokenKey, response.token);
       }
 
@@ -88,7 +95,7 @@ class AuthService {
         method: 'POST'
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout API error:', error);
     } finally {
       localStorage.removeItem(this.tokenKey);
     }
@@ -97,11 +104,27 @@ class AuthService {
   async getCurrentUser() {
     try {
       const token = localStorage.getItem(this.tokenKey);
-      if (!token) return null;
+      console.log('🔔 Getting current user, token exists:', !!token);
+      
+      if (!token) {
+        console.log('🔔 No token found');
+        return null;
+      }
 
       const response = await this.apiCall('/user');
-      return response.user;
+      console.log('🔔 Current user response:', response);
+      
+      // Sprawdź czy response ma user lub czy response samo w sobie jest userem
+      if (response.user) {
+        return response.user;
+      } else if (response.id) {
+        return response;
+      } else {
+        console.log('🔔 Invalid user response format');
+        return null;
+      }
     } catch (error) {
+      console.error('🔔 Get current user error:', error);
       localStorage.removeItem(this.tokenKey);
       return null;
     }

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import AuthService from '../../../services/AuthService';
 
-const StudentDashboard = ({ onNavigate }) => {
+const StudentDashboard = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [todayLessons, setTodayLessons] = useState([]);
@@ -21,17 +23,13 @@ const StudentDashboard = ({ onNavigate }) => {
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await AuthService.apiCall('/student/dashboard');
+      const data = await AuthService.apiCall('/student/dashboard');
+      console.log('Student dashboard data:', data);
       
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setTodayLessons(data.today_lessons);
-        setUpcomingLessons(data.upcoming_lessons);
-        setRecentLessons(data.recent_lessons);
-      } else {
-        throw new Error('Nie udało się pobrać danych');
-      }
+      setStats(data.stats);
+      setTodayLessons(data.today_lessons);
+      setUpcomingLessons(data.upcoming_lessons);
+      setRecentLessons(data.recent_lessons);
     } catch (error) {
       setError(error.message);
       console.error('Dashboard error:', error);
@@ -42,11 +40,8 @@ const StudentDashboard = ({ onNavigate }) => {
 
   const fetchPendingApprovals = async () => {
     try {
-      const response = await AuthService.apiCall('/student/pending-approvals');
-      if (response.ok) {
-        const data = await response.json();
-        setPendingApprovals(data.pending_approvals);
-      }
+      const data = await AuthService.apiCall('/student/pending-approvals');
+      setPendingApprovals(data.pending_approvals);
     } catch (error) {
       console.error('Pending approvals error:', error);
     }
@@ -54,21 +49,20 @@ const StudentDashboard = ({ onNavigate }) => {
 
   const handleLogout = async () => {
     await logout();
-    onNavigate('home');
+    navigate('/');
   };
 
   const handleApproveReschedule = async (lessonId) => {
     try {
-      const response = await AuthService.apiCall(`/student/lessons/${lessonId}/approve-reschedule`, {
+      const data = await AuthService.apiCall(`/student/lessons/${lessonId}/approve-reschedule`, {
         method: 'PATCH'
       });
-
-      if (response.ok) {
-        fetchDashboardData();
-        fetchPendingApprovals();
-      }
+      console.log('Approve reschedule response:', data);
+      await fetchPendingApprovals();
+      await fetchDashboardData();
     } catch (error) {
       console.error('Approve reschedule error:', error);
+      setError(error.message);
     }
   };
 
@@ -147,11 +141,7 @@ const StudentDashboard = ({ onNavigate }) => {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-blue-400/30 border-t-blue-400 rounded-full mx-auto mb-4"
-          />
+          <div className="w-16 h-16 border-4 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-300 text-lg">Ładowanie panelu studenta...</p>
         </div>
       </div>
@@ -159,71 +149,8 @@ const StudentDashboard = ({ onNavigate }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-3xl font-light text-white mb-2"
-              >
-                Panel Studenta
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-slate-400"
-              >
-                Witaj {user?.name}, kontynuuj swoją muzyczną podróż
-              </motion.p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('student-book-lesson')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                Umów lekcję
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('student-calendar')}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                📅 Kalendarz
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('home')}
-                className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
-              >
-                Powrót do strony
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                Wyloguj się
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <div className="min-h-screen bg-slate-900 pt-20"> {/* Dodaj pt-20 dla fixed header */}
+      {/* Usuń duplicate header */}
       <div className="container mx-auto px-6 py-8">
         {error && (
           <motion.div
@@ -251,7 +178,7 @@ const StudentDashboard = ({ onNavigate }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('student-approvals')}
+              onClick={() => navigate('/student/approvals')}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300"
             >
               Zobacz zmiany
@@ -321,7 +248,7 @@ const StudentDashboard = ({ onNavigate }) => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onNavigate('student-book-lesson')}
+                    onClick={() => navigate('/student/book-lesson')}
                     className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
                   >
                     Umów lekcję
@@ -340,21 +267,21 @@ const StudentDashboard = ({ onNavigate }) => {
                   title: 'Umów nową lekcję',
                   description: 'Znajdź nauczyciela i zarezerwuj termin',
                   icon: '📅',
-                  action: () => onNavigate('student-book-lesson'),
+                  action: () => navigate('/student/book-lesson'),
                   color: 'from-blue-500 to-indigo-600'
                 },
                 {
                   title: 'Mój kalendarz',
                   description: 'Zobacz wszystkie swoje lekcje',
                   icon: '📊',
-                  action: () => onNavigate('student-calendar'),
+                  action: () => navigate('/student/calendar'),
                   color: 'from-green-500 to-emerald-600'
                 },
                 {
                   title: 'Historia lekcji',
                   description: 'Przeglądaj zakończone lekcje i notatki',
                   icon: '📚',
-                  action: () => onNavigate('student-lessons'),
+                  action: () => navigate('/student/lessons'),
                   color: 'from-purple-500 to-violet-600'
                 }
               ].map((action, index) => (

@@ -1,11 +1,12 @@
-// src/pages/student/BookLesson/StudentBookLesson.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import AuthService from '../../../services/AuthService';
 
-const StudentBookLesson = ({ onNavigate }) => {
+const StudentBookLesson = () => {  // Usuń onNavigate prop
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -34,17 +35,17 @@ const StudentBookLesson = ({ onNavigate }) => {
   const fetchTeachers = async () => {
     try {
       setIsLoading(true);
-      const response = await AuthService.apiCall('/student/teachers');
+      setError('');
+      console.log('📚 Fetching teachers...');
       
-      if (response.ok) {
-        const data = await response.json();
-        setTeachers(data.teachers);
-      } else {
-        throw new Error('Nie udało się pobrać listy nauczycieli');
-      }
+      // Używamy AuthService.apiCall który już zwraca JSON
+      const data = await AuthService.apiCall('/student/teachers');
+      console.log('📚 Teachers response:', data);
+      
+      setTeachers(data.teachers || []);
     } catch (error) {
       setError(error.message);
-      console.error('Fetch teachers error:', error);
+      console.error('📚 Fetch teachers error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -52,19 +53,20 @@ const StudentBookLesson = ({ onNavigate }) => {
 
   const fetchAvailableSlots = async () => {
     try {
-      const response = await AuthService.apiCall(
-        `/student/teachers/${selectedTeacher.id}/available-slots?date=${selectedDate}`
-      );
+      setError('');
+      console.log('📅 Fetching available slots...');
       
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableSlots(data.available_slots);
-      } else {
-        throw new Error('Nie udało się pobrać dostępnych terminów');
-      }
+      // Użyj query parametrów zamiast URL parametru
+      const data = await AuthService.apiCall(
+        `/student/available-slots?teacher_id=${selectedTeacher.id}&date=${selectedDate}&duration=${formData.duration}`
+      );
+      console.log('📅 Available slots response:', data);
+      
+      setAvailableSlots(data.available_slots || []);
     } catch (error) {
       setError(error.message);
-      console.error('Fetch slots error:', error);
+      console.error('📅 Fetch slots error:', error);
+      setAvailableSlots([]);
     }
   };
 
@@ -73,29 +75,32 @@ const StudentBookLesson = ({ onNavigate }) => {
 
     try {
       setIsBooking(true);
-      const response = await AuthService.apiCall('/student/request-lesson', {
+      setError('');
+      console.log('📝 Booking lesson...');
+      
+      const bookingData = {
+        teacher_id: selectedTeacher.id,
+        preferred_date: selectedDate,
+        preferred_time: selectedSlot.start_time,
+        duration: formData.duration,
+        message: formData.message,
+        lesson_type: formData.lesson_type
+      };
+      
+      console.log('📝 Booking data:', bookingData);
+      
+      const data = await AuthService.apiCall('/student/request-lesson', {
         method: 'POST',
-        body: JSON.stringify({
-          teacher_id: selectedTeacher.id,
-          preferred_date: selectedDate,
-          preferred_time: selectedSlot.start_time,
-          duration: formData.duration,
-          message: formData.message,
-          lesson_type: formData.lesson_type
-        })
+        body: JSON.stringify(bookingData)
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Success - redirect to dashboard with success message
-        onNavigate('student-dashboard');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Nie udało się zarezerwować lekcji');
-      }
+      
+      console.log('📝 Booking response:', data);
+      
+      // Success - redirect to dashboard
+      navigate('/student/dashboard');
     } catch (error) {
       setError(error.message);
-      console.error('Book lesson error:', error);
+      console.error('📝 Book lesson error:', error);
     } finally {
       setIsBooking(false);
     }
@@ -127,21 +132,21 @@ const StudentBookLesson = ({ onNavigate }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 pt-20 flex items-center justify-center">
         <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-16 h-16 border-4 border-blue-400/30 border-t-blue-400 rounded-full mx-auto mb-4"
           />
-          <p className="text-slate-300 text-lg">Ładowanie...</p>
+          <p className="text-slate-300 text-lg">Ładowanie nauczycieli...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-900 pt-20">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
         <div className="container mx-auto px-6 py-6">
@@ -167,7 +172,7 @@ const StudentBookLesson = ({ onNavigate }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('student-dashboard')}
+              onClick={() => navigate('/student/dashboard')}
               className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
             >
               Powrót do panelu
@@ -231,34 +236,47 @@ const StudentBookLesson = ({ onNavigate }) => {
               className="space-y-6"
             >
               <h2 className="text-2xl font-light text-white mb-6">Wybierz nauczyciela</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {teachers.map((teacher) => (
-                  <motion.div
-                    key={teacher.id}
-                    whileHover={{ y: -5, scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setSelectedTeacher(teacher)}
-                    className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 ${
-                      selectedTeacher?.id === teacher.id
-                        ? 'bg-blue-500/20 border border-blue-500/50 ring-2 ring-blue-500/30'
-                        : 'bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800/70'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span className="text-white font-bold text-lg">
-                          {teacher.name.charAt(0)}
-                        </span>
+              
+              {teachers.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">👨‍🏫</div>
+                  <p className="text-slate-400 text-lg">Brak dostępnych nauczycieli</p>
+                  <p className="text-slate-500 text-sm mt-2">Spróbuj ponownie później</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {teachers.map((teacher) => (
+                    <motion.div
+                      key={teacher.id}
+                      whileHover={{ y: -5, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setSelectedTeacher(teacher)}
+                      className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 ${
+                        selectedTeacher?.id === teacher.id
+                          ? 'bg-blue-500/20 border border-blue-500/50 ring-2 ring-blue-500/30'
+                          : 'bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <span className="text-white font-bold text-lg">
+                            {teacher.name.charAt(0)}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-medium text-white mb-2">{teacher.name}</h3>
+                        <p className="text-blue-400 text-sm mb-3">{teacher.instrument || 'Instrument nieokreślony'}</p>
+                        {teacher.bio && (
+                          <p className="text-slate-400 text-sm line-clamp-3">{teacher.bio}</p>
+                        )}
+                        <div className="mt-3 flex items-center justify-center space-x-4 text-xs text-slate-500">
+                          <span>📧 {teacher.email}</span>
+                          {teacher.phone && <span>📞 {teacher.phone}</span>}
+                        </div>
                       </div>
-                      <h3 className="text-xl font-medium text-white mb-2">{teacher.name}</h3>
-                      <p className="text-blue-400 text-sm mb-3">{teacher.instrument}</p>
-                      {teacher.bio && (
-                        <p className="text-slate-400 text-sm line-clamp-3">{teacher.bio}</p>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -298,6 +316,30 @@ const StudentBookLesson = ({ onNavigate }) => {
                     max={getMaxDate()}
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:border-blue-400 focus:outline-none transition-all duration-300"
                   />
+                  
+                  {/* Duration Selection */}
+                  <div className="mt-4">
+                    <label className="block text-slate-300 text-sm font-light mb-2">
+                      Czas trwania lekcji
+                    </label>
+                    <select
+                      value={formData.duration}
+                      onChange={(e) => {
+                        setFormData({...formData, duration: parseInt(e.target.value)});
+                        setSelectedSlot(null); // Reset slot when duration changes
+                        if (selectedDate) {
+                          // Refresh slots with new duration
+                          fetchAvailableSlots();
+                        }
+                      }}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:border-blue-400 focus:outline-none transition-all duration-300"
+                    >
+                      <option value={30}>30 minut</option>
+                      <option value={45}>45 minut</option>
+                      <option value={60}>60 minut</option>
+                      <option value={90}>90 minut</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Time Slots */}
@@ -305,7 +347,7 @@ const StudentBookLesson = ({ onNavigate }) => {
                   <h3 className="text-xl font-light text-white mb-4">Dostępne godziny</h3>
                   {selectedDate ? (
                     availableSlots.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
                         {availableSlots.map((slot, index) => (
                           <motion.button
                             key={index}
@@ -329,6 +371,7 @@ const StudentBookLesson = ({ onNavigate }) => {
                       <div className="text-center py-8">
                         <div className="text-4xl mb-4">📅</div>
                         <p className="text-slate-400">Brak dostępnych terminów na wybrany dzień</p>
+                        <p className="text-slate-500 text-sm mt-2">Wybierz inną datę lub zmień czas trwania lekcji</p>
                       </div>
                     )
                   ) : (
@@ -356,25 +399,9 @@ const StudentBookLesson = ({ onNavigate }) => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Lesson Details Form */}
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
-                  <h3 className="text-xl font-light text-white mb-4">Konfiguracja lekcji</h3>
+                  <h3 className="text-xl font-light text-white mb-4">Dodatkowe informacje</h3>
                   
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-slate-300 text-sm font-light mb-2">
-                        Czas trwania lekcji
-                      </label>
-                      <select
-                        value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
-                        className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:border-blue-400 focus:outline-none transition-all duration-300"
-                      >
-                        <option value={30}>30 minut</option>
-                        <option value={45}>45 minut</option>
-                        <option value={60}>60 minut</option>
-                        <option value={90}>90 minut</option>
-                      </select>
-                    </div>
-
                     <div>
                       <label className="block text-slate-300 text-sm font-light mb-2">
                         Typ lekcji
@@ -415,7 +442,7 @@ const StudentBookLesson = ({ onNavigate }) => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Instrument:</span>
-                      <span className="text-white">{selectedTeacher?.instrument}</span>
+                      <span className="text-white">{selectedTeacher?.instrument || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Data:</span>

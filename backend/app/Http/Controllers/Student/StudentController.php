@@ -125,6 +125,58 @@ class StudentController extends Controller
         }
     }
 
+    public function calendarRange(Request $request)
+    {
+        try {
+            $student = auth()->user();
+            
+            if (!$student->isStudent()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            $request->validate([
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+            ]);
+
+            $startDate = Carbon::parse($request->start_date)->startOfDay();
+            $endDate = Carbon::parse($request->end_date)->endOfDay();
+
+            $lessons = Lesson::forStudent($student->id)
+                ->whereBetween('start_time', [$startDate, $endDate])
+                ->with(['teacher' => function($query) {
+                    $query->select('id', 'name', 'email', 'instrument');
+                }])
+                ->orderBy('start_time')
+                ->get();
+
+            return response()->json([
+                'lessons' => $lessons,
+                'period' => [
+                    'start' => $startDate->toDateString(),
+                    'end' => $endDate->toDateString()
+                ],
+                'total_lessons' => $lessons->count(),
+                'stats' => [
+                    'scheduled' => $lessons->where('status', 'scheduled')->count(),
+                    'completed' => $lessons->where('status', 'completed')->count(),
+                    'pending' => $lessons->where('status', 'pending')->count(),
+                    'cancelled' => $lessons->where('status', 'cancelled')->count(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Student calendar range error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function lessons(Request $request)
     {
         try {
@@ -183,83 +235,69 @@ class StudentController extends Controller
 
             $request->validate([
                 'teacher_id' => 'required|exists:users,id',
-                'preferred_date' => 'required|date|after:now',
+                'preferred_date' => 'required|date|after:today',
                 'preferred_time' => 'required|date_format:H:i',
                 'duration' => 'required|integer|min:30|max:120',
                 'message' => 'nullable|string|max:500',
-                'lesson_type' => 'required|in:individual,group',
+                'lesson_type' => 'required|in:individual,group'
             ]);
 
-            // Sprawdź czy nauczyciel istnieje i ma rolę teacher
-            $teacher = User::find($request->teacher_id);
-            if (!$teacher || !$teacher->isTeacher()) {
+            // Sprawdź czy nauczyciel jest aktywny
+            $teacher = User::where('role', 'teacher')
+                ->where('is_active', true)
+                ->find($request->teacher_id);
+
+            if (!$teacher) {
                 return response()->json([
-                    'message' => 'Wybrany użytkownik nie jest nauczycielem.'
-                ], 422);
+                    'message' => 'Nauczyciel nie został znaleziony lub nie jest aktywny.'
+                ], 404);
             }
 
-            // Kombinuj datę i czas
-            $startTime = Carbon::parse($request->preferred_date . ' ' . $request->preferred_time);
-            $endTime = $startTime->copy()->addMinutes($request->duration);
+            // Utwórz datę i czas rozpoczęcia
+            $startDateTime = Carbon::parse($request->preferred_date . ' ' . $request->preferred_time);
+            $endDateTime = $startDateTime->copy()->addMinutes($request->duration);
 
-            // Sprawdź konflikty w kalendarzu nauczyciela
-            $conflict = Lesson::forTeacher($teacher->id)
+            // Sprawdź czy termin nie koliduje z istniejącymi lekcjami
+            $conflictingLesson = Lesson::where('teacher_id', $request->teacher_id)
                 ->where('status', '!=', 'cancelled')
-                ->where(function($query) use ($startTime, $endTime) {
-                    $query->whereBetween('start_time', [$startTime, $endTime])
-                          ->orWhereBetween('end_time', [$startTime, $endTime])
-                          ->orWhere(function($q) use ($startTime, $endTime) {
-                              $q->where('start_time', '<=', $startTime)
-                                ->where('end_time', '>=', $endTime);
+                ->where(function($query) use ($startDateTime, $endDateTime) {
+                    $query->whereBetween('start_time', [$startDateTime, $endDateTime])
+                          ->orWhereBetween('end_time', [$startDateTime, $endDateTime])
+                          ->orWhere(function($q) use ($startDateTime, $endDateTime) {
+                              $q->where('start_time', '<=', $startDateTime)
+                                ->where('end_time', '>=', $endDateTime);
                           });
                 })
-                ->exists();
+                ->first();
 
-            if ($conflict) {
+            if ($conflictingLesson) {
                 return response()->json([
-                    'message' => 'Nauczyciel ma już zajęty ten termin. Wybierz inną godzinę.'
+                    'message' => 'Wybrany termin jest już zajęty. Wybierz inny termin.'
                 ], 422);
             }
 
-            // Sprawdź konflikty w kalendarzu studenta
-            $studentConflict = Lesson::forStudent($student->id)
-                ->where('status', '!=', 'cancelled')
-                ->where(function($query) use ($startTime, $endTime) {
-                    $query->whereBetween('start_time', [$startTime, $endTime])
-                          ->orWhereBetween('end_time', [$startTime, $endTime])
-                          ->orWhere(function($q) use ($startTime, $endTime) {
-                              $q->where('start_time', '<=', $startTime)
-                                ->where('end_time', '>=', $endTime);
-                          });
-                })
-                ->exists();
-
-            if ($studentConflict) {
-                return response()->json([
-                    'message' => 'Masz już zaplanowaną lekcję w tym czasie.'
-                ], 422);
-            }
-
+            // Utwórz lekcję ze statusem "pending"
             $lesson = Lesson::create([
-                'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
-                'title' => 'Lekcja ' . $student->instrument,
+                'teacher_id' => $request->teacher_id,
+                'title' => 'Lekcja ' . ($teacher->instrument ?: 'muzyki'),
                 'description' => $request->message,
-                'start_time' => $startTime,
-                'end_time' => $endTime,
-                'instrument' => $student->instrument,
+                'start_time' => $startDateTime,
+                'end_time' => $endDateTime,
+                'status' => 'pending', // Czeka na akceptację nauczyciela
                 'lesson_type' => $request->lesson_type,
-                'status' => 'pending', // Wymaga potwierdzenia nauczyciela
+                'location' => 'Do ustalenia',
+                'price' => null, // Ustawi nauczyciel
+                'is_paid' => false
             ]);
 
-            $lesson->load('teacher');
-
-            // TODO: Wyślij powiadomienie do nauczyciela
+            // Możesz tutaj dodać wysyłanie powiadomienia do nauczyciela
+            // event(new LessonRequested($lesson));
 
             return response()->json([
-                'lesson' => $lesson,
-                'message' => 'Prośba o lekcję została wysłana do nauczyciela. Otrzymasz powiadomienie o akceptacji.'
-            ], 201);
+                'message' => 'Prośba o lekcję została wysłana do nauczyciela.',
+                'lesson' => $lesson->load(['teacher', 'student'])
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Request lesson error: ' . $e->getMessage());
@@ -555,7 +593,7 @@ class StudentController extends Controller
             ], 500);
         }
     }
-    public function monthlyCalendar($year, $month)
+    public function monthlyCalendar(Request $request, $year, $month)
     {
         try {
             $student = auth()->user();
@@ -573,15 +611,12 @@ class StudentController extends Controller
                 ], 422);
             }
 
-            // Utworzenie dat dla całego miesiąca
             $startDate = Carbon::create($year, $month, 1)->startOfMonth();
             $endDate = Carbon::create($year, $month, 1)->endOfMonth();
 
             $lessons = Lesson::forStudent($student->id)
-                ->inDateRange($startDate, $endDate)
-                ->with(['teacher' => function($query) {
-                    $query->select('id', 'name', 'instrument');
-                }])
+                ->whereBetween('start_time', [$startDate, $endDate])
+                ->with('teacher')
                 ->orderBy('start_time')
                 ->get();
 
@@ -592,12 +627,6 @@ class StudentController extends Controller
                     'end' => $endDate->toDateString(),
                     'year' => (int)$year,
                     'month' => (int)$month
-                ],
-                'summary' => [
-                    'total_lessons' => $lessons->count(),
-                    'scheduled' => $lessons->where('status', 'scheduled')->count(),
-                    'pending' => $lessons->where('status', 'pending')->count(),
-                    'completed' => $lessons->where('status', 'completed')->count()
                 ]
             ]);
 
@@ -606,7 +635,132 @@ class StudentController extends Controller
             
             return response()->json([
                 'error' => 'Internal server error',
-                'message' => 'Nie udało się pobrać kalendarza.'
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getTeachers(Request $request)
+    {
+        try {
+            $student = auth()->user();
+            
+            if (!$student->isStudent()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            // Pobierz wszystkich aktywnych nauczycieli
+            $teachers = User::where('role', 'teacher')
+                ->where('is_active', true)
+                ->select('id', 'name', 'email', 'phone', 'instrument', 'bio')
+                ->orderBy('name')
+                ->get();
+
+            return response()->json([
+                'teachers' => $teachers
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get teachers error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getTeacherAvailableSlots(Request $request, $teacherId)
+    {
+        try {
+            $student = auth()->user();
+            
+            if (!$student->isStudent()) {
+                return response()->json([
+                    'message' => 'Dostęp zabroniony.'
+                ], 403);
+            }
+
+            $request->validate([
+                'date' => 'required|date|after:today',
+                'duration' => 'sometimes|integer|min:30|max:120'
+            ]);
+
+            $teacher = User::where('role', 'teacher')
+                ->where('is_active', true)
+                ->find($teacherId);
+
+            if (!$teacher) {
+                return response()->json([
+                    'message' => 'Nauczyciel nie został znaleziony.'
+                ], 404);
+            }
+
+            $date = Carbon::parse($request->date);
+            $duration = $request->get('duration', 45); // domyślnie 45 minut
+
+            // Pobierz istniejące lekcje nauczyciela na ten dzień
+            $existingLessons = Lesson::forTeacher($teacherId)
+                ->whereDate('start_time', $date)
+                ->where('status', '!=', 'cancelled')
+                ->select('start_time', 'end_time')
+                ->get();
+
+            // Generuj dostępne sloty (np. 9:00-17:00)
+            $availableSlots = [];
+            $startHour = 9;
+            $endHour = 17;
+            
+            for ($hour = $startHour; $hour < $endHour; $hour++) {
+                for ($minute = 0; $minute < 60; $minute += 30) {
+                    $slotStart = $date->copy()->setTime($hour, $minute);
+                    $slotEnd = $slotStart->copy()->addMinutes($duration);
+
+                    // Sprawdź czy slot nie koliduje z istniejącymi lekcjami
+                    $isAvailable = true;
+                    foreach ($existingLessons as $lesson) {
+                        $lessonStart = Carbon::parse($lesson->start_time);
+                        $lessonEnd = Carbon::parse($lesson->end_time);
+
+                        if (($slotStart >= $lessonStart && $slotStart < $lessonEnd) ||
+                            ($slotEnd > $lessonStart && $slotEnd <= $lessonEnd) ||
+                            ($slotStart <= $lessonStart && $slotEnd >= $lessonEnd)) {
+                            $isAvailable = false;
+                            break;
+                        }
+                    }
+
+                    // Sprawdź czy slot nie wykracza poza godziny pracy
+                    if ($slotEnd->hour >= $endHour) {
+                        $isAvailable = false;
+                    }
+
+                    $availableSlots[] = [
+                        'start_time' => $slotStart->format('H:i'),
+                        'end_time' => $slotEnd->format('H:i'),
+                        'is_available' => $isAvailable,
+                        'duration' => $duration
+                    ];
+                }
+            }
+
+            return response()->json([
+                'available_slots' => $availableSlots,
+                'date' => $date->toDateString(),
+                'teacher' => [
+                    'id' => $teacher->id,
+                    'name' => $teacher->name
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get available slots error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
             ], 500);
         }
     }

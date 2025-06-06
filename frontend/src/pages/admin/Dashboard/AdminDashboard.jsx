@@ -1,10 +1,12 @@
 // src/pages/admin/Dashboard/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import AuthService from '../../../services/AuthService';
 
-const AdminDashboard = ({ onNavigate }) => {
+const AdminDashboard = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
@@ -64,6 +66,42 @@ const AdminDashboard = ({ onNavigate }) => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Wystąpił błąd podczas wylogowywania');
+    }
+  };
+
+  const handleNavigation = (page) => {
+    switch(page) {
+      case 'admin-users':
+        navigate('/admin/users');
+        break;
+      case 'admin-registrations':
+        navigate('/admin/registrations');
+        break;
+      case 'admin-lessons':
+        // TODO: Implement lessons page
+        console.log('Lessons page - coming soon');
+        break;
+      case 'admin-reports':
+        // TODO: Implement reports page
+        console.log('Reports page - coming soon');
+        break;
+      case 'admin-settings':
+        // TODO: Implement settings page
+        console.log('Settings page - coming soon');
+        break;
+      default:
+        break;
+    }
+    setShowNavMenu(false); // Zamknij menu po kliknięciu
+  };
+
   const statsCards = [
     {
       title: 'Wszyscy użytkownicy',
@@ -107,21 +145,21 @@ const AdminDashboard = ({ onNavigate }) => {
       title: 'Zarządzaj użytkownikami',
       description: 'Przeglądaj, edytuj i zarządzaj kontami użytkowników',
       icon: '👥',
-      action: () => onNavigate('admin-users'),
+      action: () => navigate('/admin/users'), // Popraw nawigację
       color: 'from-blue-500 to-indigo-600'
     },
     {
       title: 'Statystyki',
       description: 'Szczegółowe raporty i analizy',
       icon: '📊',
-      action: () => {}, // TODO: Implement stats page
+      action: () => console.log('Stats page - coming soon'), // TODO: Implement
       color: 'from-purple-500 to-violet-600'
     },
     {
       title: 'Ustawienia',
       description: 'Konfiguracja systemu i preferencje',
       icon: '⚙️',
-      action: () => {}, // TODO: Implement settings page
+      action: () => console.log('Settings page - coming soon'), // TODO: Implement
       color: 'from-gray-500 to-slate-600'
     }
   ];
@@ -193,114 +231,8 @@ const AdminDashboard = ({ onNavigate }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-3xl font-light text-white mb-2"
-              >
-                Panel Administratora
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-slate-400"
-              >
-                Witaj {user?.name}, zarządzaj swoją szkołą muzyczną
-              </motion.p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Navigation Dropdown */}
-              <div className="relative">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowNavMenu(!showNavMenu)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2"
-                >
-                  <span>🔧 Zarządzaj</span>
-                  <svg 
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      showNavMenu ? 'rotate-180' : ''
-                    }`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                  {pendingRegistrations.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {pendingRegistrations.length > 9 ? '9+' : pendingRegistrations.length}
-                    </span>
-                  )}
-                </motion.button>
-
-                {showNavMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-64 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl py-2 z-50"
-                  >
-                    {adminNavItems.map((item) => (
-                      <motion.button
-                        key={item.key}
-                        whileHover={{ x: 4 }}
-                        onClick={() => {
-                          onNavigate(item.key);
-                          setShowNavMenu(false);
-                        }}
-                        className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg">{item.icon}</span>
-                          <span className={item.color}>{item.name}</span>
-                        </div>
-                        {item.badge > 0 && (
-                          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {item.badge > 9 ? '9+' : item.badge}
-                          </span>
-                        )}
-                      </motion.button>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('home')}
-                className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
-              >
-                Powrót do strony
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={async () => {
-                  await logout();
-                  onNavigate('home');
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                Wyloguj się
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <div className="min-h-screen bg-slate-900 pt-20"> {/* Dodaj pt-20 dla fixed header */}
+      
       <div className="container mx-auto px-6 py-8">
         {error && (
           <motion.div
@@ -328,7 +260,7 @@ const AdminDashboard = ({ onNavigate }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('admin-registrations')}
+              onClick={() => navigate('/admin/registrations')} // Popraw nawigację
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300"
             >
               Zobacz rejestracje

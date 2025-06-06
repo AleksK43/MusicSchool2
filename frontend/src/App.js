@@ -3,7 +3,7 @@ import { ArtyzLoadingAnimation } from './components/common/Loading';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ToastContainer } from './components/common/Notifications';
-import Home from './pages/public/Home/Home';
+import AppRouter from './components/AppRouter';
 import './App.css';
 
 function App() {
@@ -19,7 +19,7 @@ function App() {
             />
           )}
           
-          {!isLoading && <Home />}
+          {!isLoading && <AppRouter />}
           <ToastContainer />
         </div>
       </NotificationProvider>

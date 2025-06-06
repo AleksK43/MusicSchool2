@@ -56,6 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Monthly calendar
         Route::get('calendar/{year}/{month}', [TeacherController::class, 'monthlyCalendar']);
+        
+        // Zakres dostępnych terminów
+        Route::get('/calendar', [TeacherController::class, 'calendarRange']);
     });
 
     // Student routes
@@ -71,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Nauczyciele i dostępność
         Route::get('/teachers', [StudentController::class, 'teachers']);
+        Route::get('/available-slots', [StudentController::class, 'getAvailableSlots']);
         Route::get('/teachers/{teacher}/available-slots', [StudentController::class, 'getAvailableSlots']);
         
         // Akceptacja zmian terminów
@@ -80,6 +84,9 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Monthly calendar
         Route::get('calendar/{year}/{month}', [StudentController::class, 'monthlyCalendar']);
+        
+        // Zakres dostępnych terminów
+        Route::get('/calendar', [StudentController::class, 'calendarRange']);
     });
     
     // Shared routes (dla wszystkich zalogowanych użytkowników)

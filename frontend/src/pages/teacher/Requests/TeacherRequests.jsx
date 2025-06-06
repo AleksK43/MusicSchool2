@@ -1,10 +1,12 @@
 // src/pages/teacher/Requests/TeacherRequests.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import AuthService from '../../../services/AuthService';
 
-const TeacherRequests = ({ onNavigate }) => {
+const TeacherRequests = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [pendingRequests, setPendingRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -27,14 +29,10 @@ const TeacherRequests = ({ onNavigate }) => {
   const fetchPendingRequests = async () => {
     try {
       setIsLoading(true);
-      const response = await AuthService.apiCall('/teacher/pending-requests');
+      const data = await AuthService.apiCall('/teacher/pending-requests');
+      console.log('Pending requests data:', data);
       
-      if (response.ok) {
-        const data = await response.json();
-        setPendingRequests(data.pending_requests);
-      } else {
-        throw new Error('Nie udało się pobrać prośb o lekcje');
-      }
+      setPendingRequests(data.pending_requests);
     } catch (error) {
       setError(error.message);
       console.error('Fetch requests error:', error);
@@ -46,46 +44,35 @@ const TeacherRequests = ({ onNavigate }) => {
   const handleApprove = async (requestId) => {
     try {
       setActionLoading(true);
-      const response = await AuthService.apiCall(`/teacher/lessons/${requestId}/approve`, {
+      // AuthService.apiCall już zwraca JSON
+      const data = await AuthService.apiCall(`/teacher/lessons/${requestId}/approve`, {
         method: 'PATCH'
       });
-
-      if (response.ok) {
-        await fetchPendingRequests();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Nie udało się zatwierdzić lekcji');
-      }
+      console.log('Approve response:', data);
+      
+      await fetchPendingRequests();
     } catch (error) {
-      setError(error.message);
       console.error('Approve error:', error);
+      setError(error.message);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedRequest) return;
-
+  const handleReject = async (requestId, reason) => {
     try {
       setActionLoading(true);
-      const response = await AuthService.apiCall(`/teacher/lessons/${selectedRequest.id}/reject`, {
+      // AuthService.apiCall już zwraca JSON
+      const data = await AuthService.apiCall(`/teacher/lessons/${requestId}/reject`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason: rejectReason })
+        body: JSON.stringify({ reason })
       });
-
-      if (response.ok) {
-        await fetchPendingRequests();
-        setShowRejectModal(false);
-        setRejectReason('');
-        setSelectedRequest(null);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Nie udało się odrzucić lekcji');
-      }
+      console.log('Reject response:', data);
+      
+      await fetchPendingRequests();
     } catch (error) {
-      setError(error.message);
       console.error('Reject error:', error);
+      setError(error.message);
     } finally {
       setActionLoading(false);
     }
@@ -150,42 +137,8 @@ const TeacherRequests = ({ onNavigate }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-3xl font-light text-white mb-2"
-              >
-                Prośby o lekcje
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-slate-400"
-              >
-                Zarządzaj prośbami studentów o lekcje ({pendingRequests.length} oczekujących)
-              </motion.p>
-            </div>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('teacher-dashboard')}
-              className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
-            >
-              Powrót do panelu
-            </motion.button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <div className="min-h-screen bg-slate-900 pt-20"> {/* Dodaj pt-20 dla fixed header */}
+      {/* Usuń duplicate header */}
       <div className="container mx-auto px-6 py-8">
         {error && (
           <motion.div
@@ -325,7 +278,7 @@ const TeacherRequests = ({ onNavigate }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('teacher-dashboard')}
+              onClick={() => navigate('teacher-dashboard')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
             >
               Powrót do dashboardu

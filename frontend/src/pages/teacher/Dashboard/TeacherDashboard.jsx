@@ -1,10 +1,12 @@
 // src/pages/teacher/Dashboard/TeacherDashboard.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import AuthService from '../../../services/AuthService';
 
-const TeacherDashboard = ({ onNavigate }) => {
+const TeacherDashboard = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [todayLessons, setTodayLessons] = useState([]);
@@ -12,6 +14,80 @@ const TeacherDashboard = ({ onNavigate }) => {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Helper functions
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'pending':
+        return 'border-yellow-500 text-yellow-300 bg-yellow-500/20';
+      case 'scheduled':
+        return 'border-blue-500 text-blue-300 bg-blue-500/20';
+      case 'completed':
+        return 'border-green-500 text-green-300 bg-green-500/20';
+      case 'cancelled':
+        return 'border-red-500 text-red-300 bg-red-500/20';
+      case 'rescheduled':
+        return 'border-orange-500 text-orange-300 bg-orange-500/20';
+      default:
+        return 'border-slate-500 text-slate-300 bg-slate-500/20';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch(status) {
+      case 'pending':
+        return 'Oczekuje';
+      case 'scheduled':
+        return 'Zaplanowana';
+      case 'completed':
+        return 'Zakończona';
+      case 'cancelled':
+        return 'Anulowana';
+      case 'rescheduled':
+        return 'Przełożona';
+      default:
+        return 'Nieznany';
+    }
+  };
+
+  // Stats cards data
+  const statsCards = [
+    {
+      title: 'Dzisiejsze lekcje',
+      value: todayLessons?.length || 0,
+      icon: '📅',
+      color: 'from-blue-400 to-indigo-600',
+      bgColor: 'from-blue-900/20 to-indigo-900/30'
+    },
+    {
+      title: 'Nadchodzące lekcje',
+      value: upcomingLessons?.length || 0,
+      icon: '⏰',
+      color: 'from-green-400 to-emerald-600',
+      bgColor: 'from-green-900/20 to-emerald-900/30'
+    },
+    {
+      title: 'Oczekujące prośby',
+      value: pendingRequests?.length || 0,
+      icon: '📋',
+      color: 'from-yellow-400 to-orange-600',
+      bgColor: 'from-yellow-900/20 to-orange-900/30'
+    },
+    {
+      title: 'Łączne lekcje',
+      value: stats?.total_lessons || 0,
+      icon: '🎯',
+      color: 'from-purple-400 to-violet-600',
+      bgColor: 'from-purple-900/20 to-violet-900/30'
+    },
+    {
+      title: 'Aktywni studenci',
+      value: stats?.active_students || 0,
+      icon: '👥',
+      color: 'from-pink-400 to-rose-600',
+      bgColor: 'from-pink-900/20 to-rose-900/30'
+    }
+  ];
 
   useEffect(() => {
     fetchDashboardData();
@@ -21,16 +97,12 @@ const TeacherDashboard = ({ onNavigate }) => {
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await AuthService.apiCall('/teacher/dashboard');
+      const data = await AuthService.apiCall('/teacher/dashboard');
+      console.log('Teacher dashboard data:', data);
       
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setTodayLessons(data.today_lessons);
-        setUpcomingLessons(data.upcoming_lessons);
-      } else {
-        throw new Error('Nie udało się pobrać danych');
-      }
+      setStats(data.stats || {});
+      setTodayLessons(data.today_lessons || []);
+      setUpcomingLessons(data.upcoming_lessons || []);
     } catch (error) {
       setError(error.message);
       console.error('Dashboard error:', error);
@@ -41,11 +113,8 @@ const TeacherDashboard = ({ onNavigate }) => {
 
   const fetchPendingRequests = async () => {
     try {
-      const response = await AuthService.apiCall('/teacher/pending-requests');
-      if (response.ok) {
-        const data = await response.json();
-        setPendingRequests(data.pending_requests);
-      }
+      const data = await AuthService.apiCall('/teacher/pending-requests');
+      setPendingRequests(data.pending_requests || []);
     } catch (error) {
       console.error('Pending requests error:', error);
     }
@@ -53,111 +122,56 @@ const TeacherDashboard = ({ onNavigate }) => {
 
   const handleLogout = async () => {
     await logout();
-    onNavigate('home');
+    navigate('/');
   };
 
   const handleApproveRequest = async (lessonId) => {
     try {
-      const response = await AuthService.apiCall(`/teacher/lessons/${lessonId}/approve`, {
+      const data = await AuthService.apiCall(`/teacher/lessons/${lessonId}/approve`, {
         method: 'PATCH'
       });
-
-      if (response.ok) {
-        fetchDashboardData();
-        fetchPendingRequests();
-      }
+      console.log('Approve response:', data);
+      await fetchPendingRequests();
+      await fetchDashboardData();
     } catch (error) {
-      console.error('Approve request error:', error);
+      console.error('Approve error:', error);
+      setError(error.message);
     }
   };
 
   const handleRejectRequest = async (lessonId, reason) => {
     try {
-      const response = await AuthService.apiCall(`/teacher/lessons/${lessonId}/reject`, {
+      const data = await AuthService.apiCall(`/teacher/lessons/${lessonId}/reject`, {
         method: 'PATCH',
         body: JSON.stringify({ reason })
       });
-
-      if (response.ok) {
-        fetchDashboardData();
-        fetchPendingRequests();
-      }
+      console.log('Reject response:', data);
+      await fetchPendingRequests();
+      await fetchDashboardData();
     } catch (error) {
-      console.error('Reject request error:', error);
+      console.error('Reject error:', error);
+      setError(error.message);
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'pending': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-      'scheduled': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-      'pending_student_approval': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-      'completed': 'bg-green-500/20 text-green-300 border-green-500/30',
-      'cancelled': 'bg-red-500/20 text-red-300 border-red-500/30',
-      'no_show': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
-    };
-    return colors[status] || colors['scheduled'];
-  };
-
-  const getStatusText = (status) => {
-    const texts = {
-      'pending': 'Oczekuje na potwierdzenie',
-      'scheduled': 'Zaplanowana',
-      'pending_student_approval': 'Oczekuje na akceptację studenta',
-      'completed': 'Zakończona',
-      'cancelled': 'Anulowana',
-      'no_show': 'Nieobecność'
-    };
-    return texts[status] || 'Nieznany status';
-  };
-
-  const statsCards = [
-    {
-      title: 'Dzisiejsze lekcje',
-      value: stats?.today_lessons || 0,
-      icon: '📅',
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'from-blue-500/10 to-blue-600/10'
-    },
-    {
-      title: 'Lekcje w tym tygodniu',
-      value: stats?.week_lessons || 0,
-      icon: '📊',
-      color: 'from-green-500 to-green-600',
-      bgColor: 'from-green-500/10 to-green-600/10'
-    },
-    {
-      title: 'Nadchodzące lekcje',
-      value: stats?.upcoming_lessons || 0,
-      icon: '⏰',
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'from-purple-500/10 to-purple-600/10'
-    },
-    {
-      title: 'Liczba studentów',
-      value: stats?.total_students || 0,
-      icon: '👥',
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'from-indigo-500/10 to-indigo-600/10'
-    },
-    {
-      title: 'Ukończone w tym miesiącu',
-      value: stats?.completed_this_month || 0,
-      icon: '✅',
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'from-emerald-500/10 to-emerald-600/10'
+  const handleMarkCompleted = async (lessonId) => {
+    try {
+      const data = await AuthService.apiCall(`/teacher/lessons/${lessonId}/complete`, {
+        method: 'PATCH'
+      });
+      console.log('Mark completed response:', data);
+      await fetchDashboardData();
+    } catch (error) {
+      console.error('Mark completed error:', error);
+      setError(error.message);
     }
-  ];
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-blue-400/30 border-t-blue-400 rounded-full mx-auto mb-4"
-          />
+          <div className="w-16 h-16 border-4 border-green-400/30 border-t-green-400 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-300 text-lg">Ładowanie panelu nauczyciela...</p>
         </div>
       </div>
@@ -165,71 +179,7 @@ const TeacherDashboard = ({ onNavigate }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-3xl font-light text-white mb-2"
-              >
-                Panel Nauczyciela
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-slate-400"
-              >
-                Witaj {user?.name}, zarządzaj swoimi lekcjami i studentami
-              </motion.p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('teacher-create-lesson')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                Dodaj lekcję
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('teacher-calendar')}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                📅 Kalendarz
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('home')}
-                className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
-              >
-                Powrót do strony
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                Wyloguj się
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <div className="min-h-screen bg-slate-900 pt-20">
       <div className="container mx-auto px-6 py-8">
         {error && (
           <motion.div
@@ -257,7 +207,7 @@ const TeacherDashboard = ({ onNavigate }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('teacher-requests')}
+              onClick={() => navigate('/teacher/requests')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300"
             >
               Zobacz prośby
@@ -304,14 +254,14 @@ const TeacherDashboard = ({ onNavigate }) => {
                       className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
                     >
                       <div>
-                        <h3 className="text-white font-medium">{lesson.title}</h3>
+                        <h3 className="text-white font-medium">{lesson.title || 'Lekcja muzyki'}</h3>
                         <p className="text-slate-400 text-sm">
                           {new Date(lesson.start_time).toLocaleTimeString('pl-PL', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
-                          })} - {lesson.student?.name}
+                          })} - {lesson.student?.name || 'Nieznany student'}
                         </p>
-                        <p className="text-slate-500 text-xs">{lesson.location}</p>
+                        <p className="text-slate-500 text-xs">{lesson.location || 'Brak lokalizacji'}</p>
                       </div>
                       <div className="text-right">
                         <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(lesson.status)}`}>
@@ -321,7 +271,7 @@ const TeacherDashboard = ({ onNavigate }) => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => {/* Mark as completed */}}
+                            onClick={() => handleMarkCompleted(lesson.id)}
                             className="mt-2 block bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-all duration-300"
                           >
                             Zakończ lekcję
@@ -338,10 +288,10 @@ const TeacherDashboard = ({ onNavigate }) => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onNavigate('teacher-create-lesson')}
+                    onClick={() => navigate('/teacher/calendar')}
                     className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
                   >
-                    Dodaj lekcję
+                    Zobacz kalendarz
                   </motion.button>
                 </div>
               )}
@@ -357,7 +307,7 @@ const TeacherDashboard = ({ onNavigate }) => {
                   title: 'Zarządzaj prośbami',
                   description: `${pendingRequests.length} oczekujących prośb o lekcje`,
                   icon: '📋',
-                  action: () => onNavigate('teacher-requests'),
+                  action: () => navigate('/teacher/requests'),
                   color: 'from-blue-500 to-indigo-600',
                   highlight: pendingRequests.length > 0
                 },
@@ -365,14 +315,14 @@ const TeacherDashboard = ({ onNavigate }) => {
                   title: 'Mój kalendarz',
                   description: 'Zobacz wszystkie swoje lekcje i dostępność',
                   icon: '📊',
-                  action: () => onNavigate('teacher-calendar'),
+                  action: () => navigate('/teacher/calendar'),
                   color: 'from-green-500 to-emerald-600'
                 },
                 {
                   title: 'Moi studenci',
                   description: 'Zarządzaj listą studentów i ich postępami',
                   icon: '👥',
-                  action: () => onNavigate('teacher-students'),
+                  action: () => console.log('Students page - coming soon'),
                   color: 'from-purple-500 to-violet-600'
                 }
               ].map((action, index) => (
@@ -418,14 +368,14 @@ const TeacherDashboard = ({ onNavigate }) => {
                       className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
                     >
                       <div>
-                        <h3 className="text-white font-medium">{lesson.title}</h3>
+                        <h3 className="text-white font-medium">{lesson.title || 'Lekcja muzyki'}</h3>
                         <p className="text-slate-400 text-sm">
                           {new Date(lesson.start_time).toLocaleDateString('pl-PL')} o {new Date(lesson.start_time).toLocaleTimeString('pl-PL', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
                         </p>
-                        <p className="text-slate-500 text-xs">{lesson.student?.name} • {lesson.location}</p>
+                        <p className="text-slate-500 text-xs">{lesson.student?.name || 'Nieznany student'} • {lesson.location || 'Brak lokalizacji'}</p>
                       </div>
                       <div className="text-right">
                         <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(lesson.status)}`}>
@@ -461,7 +411,7 @@ const TeacherDashboard = ({ onNavigate }) => {
                     <div>
                       <h3 className="text-white font-medium">Nowa prośba o lekcję</h3>
                       <p className="text-slate-400 text-sm">
-                        {request.student?.name} - {new Date(request.start_time).toLocaleDateString('pl-PL')}
+                        {request.student?.name || 'Nieznany student'} - {new Date(request.start_time).toLocaleDateString('pl-PL')}
                       </p>
                     </div>
                     <div className="flex space-x-2">

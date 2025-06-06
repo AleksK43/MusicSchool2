@@ -140,14 +140,6 @@ const StudentPendingApprovals = ({ onNavigate }) => {
               </motion.p>
             </div>
             
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('student-dashboard')}
-              className="border border-slate-600 text-slate-300 px-4 py-2 rounded-lg hover:bg-slate-700/50 transition-all duration-300"
-            >
-              Powrót do panelu
-            </motion.button>
           </div>
         </div>
       </div>
@@ -287,14 +279,7 @@ const StudentPendingApprovals = ({ onNavigate }) => {
             <p className="text-slate-400 mb-8">
               Aktualnie nie masz żadnych propozycji zmian terminów od nauczycieli.
             </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('student-dashboard')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
-            >
-              Powrót do dashboardu
-            </motion.button>
+
           </div>
         )}
       </div>

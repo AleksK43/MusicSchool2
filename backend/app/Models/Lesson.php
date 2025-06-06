@@ -17,6 +17,7 @@ class Lesson extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_NO_SHOW = 'no_show';
+    const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         'teacher_id',
@@ -92,5 +93,18 @@ class Lesson extends Model
     public function scopeInDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('start_time', [$startDate, $endDate]);
+    }
+
+    // Dodane dla lepszej wydajności
+    public function scopeWithBasicRelations($query)
+    {
+        return $query->with([
+            'teacher' => function($q) {
+                $q->select('id', 'name', 'email', 'instrument');
+            },
+            'student' => function($q) {
+                $q->select('id', 'name', 'email');
+            }
+        ]);
     }
 }
