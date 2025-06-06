@@ -37,15 +37,13 @@ const AdminUsers = ({ onNavigate }) => {
     try {
       setIsLoading(true);
       const queryParams = new URLSearchParams(filters).toString();
-      const response = await AuthService.apiCall(`/admin/users?${queryParams}`);
+      // AuthService.apiCall już zwraca JSON, nie raw response
+      const data = await AuthService.apiCall(`/admin/users?${queryParams}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data || []);
-      } else {
-        throw new Error('Nie udało się pobrać użytkowników');
-      }
+      console.log('Users data received:', data);
+      setUsers(data.data || data.users || []); // Sprawdź różne możliwe klucze
     } catch (error) {
+      console.error('Fetch users error:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
@@ -86,66 +84,57 @@ const AdminUsers = ({ onNavigate }) => {
 
   const handleSaveUser = async () => {
     try {
-      const response = await AuthService.apiCall(`/admin/users/${selectedUser.id}`, {
+      const data = await AuthService.apiCall(`/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         body: JSON.stringify(editFormData)
       });
 
-      if (response.ok) {
-        await fetchUsers();
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Nie udało się zaktualizować użytkownika');
-      }
+      console.log('Update user response:', data);
+      await fetchUsers();
+      setIsEditModalOpen(false);
+      setSelectedUser(null);
     } catch (error) {
+      console.error('Update user error:', error);
       setError(error.message);
     }
   };
 
   const handleCreateUserSubmit = async () => {
     try {
-      const response = await AuthService.apiCall('/admin/users', {
+      const data = await AuthService.apiCall('/admin/users', {
         method: 'POST',
         body: JSON.stringify(createFormData)
       });
 
-      if (response.ok) {
-        await fetchUsers();
-        setIsCreateModalOpen(false);
-        setCreateFormData({
-          name: '',
-          email: '',
-          password: '',
-          role: 'student',
-          phone: '',
-          instrument: '',
-          bio: '',
-          is_active: true
-        });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Nie udało się utworzyć użytkownika');
-      }
+      console.log('Create user response:', data);
+      await fetchUsers();
+      setIsCreateModalOpen(false);
+      setCreateFormData({
+        name: '',
+        email: '',
+        password: '',
+        role: 'student',
+        phone: '',
+        instrument: '',
+        bio: '',
+        is_active: true
+      });
     } catch (error) {
+      console.error('Create user error:', error);
       setError(error.message);
     }
   };
 
   const handleToggleStatus = async (userId) => {
     try {
-      const response = await AuthService.apiCall(`/admin/users/${userId}/toggle-status`, {
+      const data = await AuthService.apiCall(`/admin/users/${userId}/toggle-status`, {
         method: 'PATCH'
       });
 
-      if (response.ok) {
-        await fetchUsers();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Nie udało się zmienić statusu użytkownika');
-      }
+      console.log('Toggle status response:', data);
+      await fetchUsers();
     } catch (error) {
+      console.error('Toggle status error:', error);
       setError(error.message);
     }
   };
@@ -156,17 +145,14 @@ const AdminUsers = ({ onNavigate }) => {
     }
 
     try {
-      const response = await AuthService.apiCall(`/admin/users/${userId}`, {
+      const data = await AuthService.apiCall(`/admin/users/${userId}`, {
         method: 'DELETE'
       });
 
-      if (response.ok) {
-        await fetchUsers();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Nie udało się usunąć użytkownika');
-      }
+      console.log('Delete user response:', data);
+      await fetchUsers();
     } catch (error) {
+      console.error('Delete user error:', error);
       setError(error.message);
     }
   };

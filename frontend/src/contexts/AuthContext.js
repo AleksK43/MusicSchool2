@@ -47,12 +47,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
+    console.log('🔔 AuthContext.register called with:', userData);
+    
     try {
+      // Użyj AuthService.register zamiast bezpośrednio apiCall
       const response = await AuthService.register(userData);
-      setUser(response.user);
-      setIsAuthenticated(true);
+      console.log('🔔 AuthService.register response:', response);
       return response;
     } catch (error) {
+      console.error('🔔 AuthContext.register error:', error);
       throw error;
     }
   };

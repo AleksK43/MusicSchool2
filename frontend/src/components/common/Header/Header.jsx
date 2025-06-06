@@ -49,11 +49,8 @@ const Header = ({ onNavigate }) => {
     }
   };
 
-  const handleRegistrationSuccess = (userData) => {
-    // Po rejestracji również sprawdź rolę
-    if (userData.role === 'admin') {
-      onNavigate('admin-dashboard');
-    }
+  const handleRegistrationSuccess = (data) => {
+    closeModals();
   };
 
   const handleLogout = async () => {

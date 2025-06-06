@@ -3,64 +3,80 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api
 
 class AuthService {
   constructor() {
-    this.token = localStorage.getItem('auth_token');
-    this.user = JSON.parse(localStorage.getItem('user') || 'null');
+    this.baseURL = 'http://localhost:8000/api';
+    this.tokenKey = 'auth_token';
   }
 
-  async login(credentials) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
+  async apiCall(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const token = localStorage.getItem(this.tokenKey);
 
-      const data = await response.json();
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers
+      },
+      ...options
+    };
+
+    console.log('🔔 Making API call to:', url, 'with config:', config);
+
+    try {
+      const response = await fetch(url, config);
+      console.log('🔔 API response status:', response.status);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Błąd logowania');
+        const errorData = await response.json();
+        console.error('🔔 API error response:', errorData);
+        
+        // Sprawdź czy to błędy walidacji (422)
+        if (response.status === 422 && errorData.errors) {
+          const validationErrors = Object.values(errorData.errors).flat().join(', ');
+          throw new Error(validationErrors);
+        }
+        
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      this.token = data.token;
-      this.user = data.user;
-      
-      localStorage.setItem('auth_token', this.token);
-      localStorage.setItem('user', JSON.stringify(this.user));
-
+      const data = await response.json();
+      console.log('🔔 API success response:', data);
       return data;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('🔔 API call failed:', error);
       throw error;
     }
   }
 
   async register(userData) {
+    console.log('🔔 AuthService.register called with:', userData);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const response = await this.apiCall('/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(userData)
       });
 
-      const data = await response.json();
+      return response;
+    } catch (error) {
+      console.error('🔔 AuthService.register error:', error);
+      throw error;
+    }
+  }
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Błąd rejestracji');
+  async login(credentials) {
+    try {
+      const response = await this.apiCall('/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials)
+      });
+
+      if (response.token) {
+        localStorage.setItem(this.tokenKey, response.token);
       }
 
-      this.token = data.token;
-      this.user = data.user;
-      
-      localStorage.setItem('auth_token', this.token);
-      localStorage.setItem('user', JSON.stringify(this.user));
-
-      return data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -68,97 +84,35 @@ class AuthService {
 
   async logout() {
     try {
-      if (this.token) {
-        await fetch(`${API_BASE_URL}/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.token}`,
-            'Accept': 'application/json',
-          },
-        });
-      }
+      await this.apiCall('/logout', {
+        method: 'POST'
+      });
     } catch (error) {
-      console.error('Błąd wylogowania:', error);
+      console.error('Logout error:', error);
     } finally {
-      this.token = null;
-      this.user = null;
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      localStorage.removeItem(this.tokenKey);
     }
   }
 
   async getCurrentUser() {
-    if (!this.token) return null;
-
     try {
-      const response = await fetch(`${API_BASE_URL}/me`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Accept': 'application/json',
-        },
-      });
+      const token = localStorage.getItem(this.tokenKey);
+      if (!token) return null;
 
-      if (!response.ok) {
-        throw new Error('Unauthorized');
-      }
-
-      const data = await response.json();
-      this.user = data.user;
-      localStorage.setItem('user', JSON.stringify(this.user));
-      
-      return this.user;
+      const response = await this.apiCall('/user');
+      return response.user;
     } catch (error) {
-      this.logout();
+      localStorage.removeItem(this.tokenKey);
       return null;
     }
   }
 
-  async apiCall(endpoint, options = {}) {
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    if (this.token) {
-      config.headers.Authorization = `Bearer ${this.token}`;
-    }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-    if (response.status === 401) {
-      this.logout();
-      throw new Error('Unauthorized');
-    }
-
-    return response;
+  getToken() {
+    return localStorage.getItem(this.tokenKey);
   }
 
   isAuthenticated() {
-    return !!this.token && !!this.user;
-  }
-
-  isAdmin() {
-    return this.user?.role === 'admin';
-  }
-
-  isTeacher() {
-    return this.user?.role === 'teacher';
-  }
-
-  isStudent() {
-    return this.user?.role === 'student';
-  }
-
-  getUser() {
-    return this.user;
-  }
-
-  getToken() {
-    return this.token;
+    return !!this.getToken();
   }
 }
 

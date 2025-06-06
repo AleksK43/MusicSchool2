@@ -19,13 +19,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     
     // Admin routes
-    Route::middleware('admin')->prefix('admin')->group(function () {
+    Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/users', [AdminController::class, 'users']);
         Route::post('/users', [AdminController::class, 'createUser']);
         Route::put('/users/{user}', [AdminController::class, 'updateUser']);
-        Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleUserStatus']);
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser']);
+        Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleUserStatus']);
+        
+        Route::get('registrations/pending', [AdminController::class, 'pendingRegistrations']);
+        Route::patch('registrations/{registration}/approve', [AdminController::class, 'approveRegistration']);
+        Route::patch('registrations/{registration}/reject', [AdminController::class, 'rejectRegistration']);
     });
 
     // Teacher routes

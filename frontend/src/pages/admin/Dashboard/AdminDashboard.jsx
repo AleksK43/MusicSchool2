@@ -8,9 +8,11 @@ const AdminDashboard = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -18,26 +20,48 @@ const AdminDashboard = ({ onNavigate }) => {
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const response = await AuthService.apiCall('/admin/dashboard');
+      const data = await AuthService.apiCall('/admin/dashboard');
       
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setRecentUsers(data.recent_users);
-      } else {
-        throw new Error('Nie udało się pobrać danych');
-      }
+      console.log('Dashboard data received:', data);
+      
+      setStats(data.stats);
+      setRecentUsers(data.recent_users);
+      setPendingRegistrations(data.pending_registrations || []);
     } catch (error) {
+      console.error('Dashboard error details:', error);
       setError(error.message);
-      console.error('Dashboard error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    onNavigate('home');
+  const handleApproveRegistration = async (registrationId) => {
+    try {
+      const data = await AuthService.apiCall(`/admin/registrations/${registrationId}/approve`, {
+        method: 'PATCH'
+      });
+      
+      console.log('Approve response:', data);
+      fetchDashboardData(); // Odśwież dane
+    } catch (error) {
+      console.error('Approve error:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleRejectRegistration = async (registrationId, reason) => {
+    try {
+      const data = await AuthService.apiCall(`/admin/registrations/${registrationId}/reject`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason })
+      });
+      
+      console.log('Reject response:', data);
+      fetchDashboardData(); // Odśwież dane
+    } catch (error) {
+      console.error('Reject error:', error);
+      setError(error.message);
+    }
   };
 
   const statsCards = [
@@ -70,9 +94,9 @@ const AdminDashboard = ({ onNavigate }) => {
       bgColor: 'from-emerald-500/10 to-emerald-600/10'
     },
     {
-      title: 'Nowe rejestracje (7 dni)',
-      value: stats?.recent_registrations || 0,
-      icon: '📈',
+      title: 'Oczekujące rejestracje',
+      value: stats?.pending_registrations || 0,
+      icon: '⏳',
       color: 'from-orange-500 to-orange-600',
       bgColor: 'from-orange-500/10 to-orange-600/10'
     }
@@ -99,6 +123,40 @@ const AdminDashboard = ({ onNavigate }) => {
       icon: '⚙️',
       action: () => {}, // TODO: Implement settings page
       color: 'from-gray-500 to-slate-600'
+    }
+  ];
+
+  const adminNavItems = [
+    {
+      name: 'Użytkownicy',
+      key: 'admin-users',
+      icon: '👥',
+      color: 'text-blue-400'
+    },
+    {
+      name: 'Rejestracje',
+      key: 'admin-registrations',
+      icon: '📋',
+      color: 'text-orange-400',
+      badge: pendingRegistrations.length
+    },
+    {
+      name: 'Lekcje',
+      key: 'admin-lessons',
+      icon: '📚',
+      color: 'text-green-400'
+    },
+    {
+      name: 'Raporty',
+      key: 'admin-reports',
+      icon: '📊',
+      color: 'text-purple-400'
+    },
+    {
+      name: 'Ustawienia',
+      key: 'admin-settings',
+      icon: '⚙️',
+      color: 'text-slate-400'
     }
   ];
 
@@ -159,6 +217,64 @@ const AdminDashboard = ({ onNavigate }) => {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Navigation Dropdown */}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowNavMenu(!showNavMenu)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center space-x-2"
+                >
+                  <span>🔧 Zarządzaj</span>
+                  <svg 
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      showNavMenu ? 'rotate-180' : ''
+                    }`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  {pendingRegistrations.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {pendingRegistrations.length > 9 ? '9+' : pendingRegistrations.length}
+                    </span>
+                  )}
+                </motion.button>
+
+                {showNavMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-64 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl py-2 z-50"
+                  >
+                    {adminNavItems.map((item) => (
+                      <motion.button
+                        key={item.key}
+                        whileHover={{ x: 4 }}
+                        onClick={() => {
+                          onNavigate(item.key);
+                          setShowNavMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg">{item.icon}</span>
+                          <span className={item.color}>{item.name}</span>
+                        </div>
+                        {item.badge > 0 && (
+                          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {item.badge > 9 ? '9+' : item.badge}
+                          </span>
+                        )}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+              
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -171,7 +287,10 @@ const AdminDashboard = ({ onNavigate }) => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleLogout}
+                onClick={async () => {
+                  await logout();
+                  onNavigate('home');
+                }}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
               >
                 Wyloguj się
@@ -190,6 +309,30 @@ const AdminDashboard = ({ onNavigate }) => {
             className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300"
           >
             {error}
+          </motion.div>
+        )}
+
+        {/* Pending Registrations Alert */}
+        {pendingRegistrations.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-orange-500/20 border border-orange-500/30 rounded-lg"
+          >
+            <h3 className="text-orange-300 font-medium mb-2">
+              Nowe rejestracje ({pendingRegistrations.length})
+            </h3>
+            <p className="text-orange-200/80 text-sm mb-3">
+              Użytkownicy czekają na akceptację swoich kont.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate('admin-registrations')}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300"
+            >
+              Zobacz rejestracje
+            </motion.button>
           </motion.div>
         )}
 
@@ -291,6 +434,50 @@ const AdminDashboard = ({ onNavigate }) => {
               )}
             </div>
           </motion.div>
+
+          {/* Pending Registrations */}
+          {pendingRegistrations.length > 0 && (
+            <motion.div variants={itemVariants}>
+              <h2 className="text-2xl font-light text-white mb-6">Oczekujące rejestracje</h2>
+              <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                <div className="space-y-4">
+                  {pendingRegistrations.map((registration) => (
+                    <motion.div
+                      key={registration.id}
+                      whileHover={{ x: 5 }}
+                      className="flex items-center justify-between p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg"
+                    >
+                      <div>
+                        <h3 className="text-white font-medium">{registration.name}</h3>
+                        <p className="text-slate-400 text-sm">{registration.email}</p>
+                        <p className="text-slate-500 text-xs">
+                          {registration.instrument} • {registration.experience}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleApproveRegistration(registration.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-all duration-300"
+                        >
+                          Zaakceptuj
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleRejectRegistration(registration.id, 'Brak szczegółów')}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-all duration-300"
+                        >
+                          Odrzuć
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* System Info */}
           <motion.div variants={itemVariants}>

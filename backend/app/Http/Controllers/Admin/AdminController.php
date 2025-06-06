@@ -4,18 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\PendingRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
-    // W Laravel 11 middleware definiuje się w routes, nie w konstruktorze
-    
     public function dashboard()
     {
         try {
-            Log::info('Dashboard request by user: ' . auth()->id());
+            Log::info('Admin dashboard called by user: ' . auth()->id());
             
             $stats = [
                 'total_users' => User::count(),
@@ -23,24 +22,115 @@ class AdminController extends Controller
                 'total_teachers' => User::where('role', 'teacher')->count(),
                 'active_users' => User::where('is_active', true)->count(),
                 'recent_registrations' => User::where('created_at', '>=', now()->subDays(7))->count(),
+                'pending_registrations' => PendingRegistration::where('status', 'pending')->count(),
             ];
 
             $recentUsers = User::latest()->take(5)->get();
+            $pendingRegistrations = PendingRegistration::where('status', 'pending')
+                ->latest()
+                ->take(5)
+                ->get();
 
             return response()->json([
                 'stats' => $stats,
-                'recent_users' => $recentUsers
+                'recent_users' => $recentUsers,
+                'pending_registrations' => $pendingRegistrations
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Dashboard error: ' . $e->getMessage());
+            Log::error('Admin dashboard error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
                 'error' => 'Internal server error',
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function pendingRegistrations()
+    {
+        try {
+            $registrations = PendingRegistration::where('status', 'pending')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'registrations' => $registrations
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Pending registrations error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function approveRegistration(Request $request, PendingRegistration $registration)
+    {
+        try {
+            if ($registration->status !== 'pending') {
+                return response()->json([
+                    'message' => 'Ta rejestracja została już przetworzona.'
+                ], 422);
+            }
+
+            $request->validate([
+                'notes' => 'nullable|string|max:500',
+                'role' => 'nullable|in:student,teacher'
+            ]);
+
+            // Ustaw rolę jeśli została podana
+            if ($request->role) {
+                $registration->role = $request->role;
+                $registration->save();
+            }
+
+            $user = $registration->approve(auth()->id(), $request->notes);
+
+            return response()->json([
+                'message' => 'Rejestracja została zaakceptowana. Użytkownik może się teraz zalogować.',
+                'user' => $user
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Approve registration error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function rejectRegistration(Request $request, PendingRegistration $registration)
+    {
+        try {
+            if ($registration->status !== 'pending') {
+                return response()->json([
+                    'message' => 'Ta rejestracja została już przetworzona.'
+                ], 422);
+            }
+
+            $request->validate([
+                'reason' => 'required|string|max:500'
+            ]);
+
+            $registration->reject(auth()->id(), $request->reason);
+
+            return response()->json([
+                'message' => 'Rejestracja została odrzucona.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Reject registration error: ' . $e->getMessage());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
             ], 500);
         }
     }
@@ -50,33 +140,37 @@ class AdminController extends Controller
         try {
             $query = User::query();
 
-            // Filtering
-            if ($request->has('role') && $request->role !== 'all') {
+            // Filtrowanie po roli
+            if ($request->role && $request->role !== 'all') {
                 $query->where('role', $request->role);
             }
 
-            if ($request->has('search') && $request->search) {
+            // Wyszukiwanie
+            if ($request->search) {
                 $query->where(function($q) use ($request) {
                     $q->where('name', 'like', '%' . $request->search . '%')
                       ->orWhere('email', 'like', '%' . $request->search . '%');
                 });
             }
 
-            // Sorting
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
+            // Sortowanie
+            $sortBy = $request->sort_by ?? 'created_at';
+            $sortOrder = $request->sort_order ?? 'desc';
             $query->orderBy($sortBy, $sortOrder);
 
-            $users = $query->paginate($request->get('per_page', 15));
+            $users = $query->get();
 
-            return response()->json($users);
-            
+            return response()->json([
+                'success' => true,
+                'data' => $users
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('Users list error: ' . $e->getMessage());
+            Log::error('Admin users error: ' . $e->getMessage());
             
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'Nie udało się pobrać użytkowników'
             ], 500);
         }
     }
@@ -88,25 +182,34 @@ class AdminController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email,' . $user->id,
                 'role' => 'required|in:student,teacher,admin',
-                'is_active' => 'boolean',
-                'phone' => 'nullable|string',
-                'instrument' => 'nullable|string',
-                'bio' => 'nullable|string',
+                'phone' => 'nullable|string|max:20',
+                'instrument' => 'nullable|string|max:100',
+                'bio' => 'nullable|string|max:1000',
+                'is_active' => 'boolean'
             ]);
 
-            $user->update($request->all());
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'role' => $request->role,
+                'phone' => $request->phone,
+                'instrument' => $request->instrument,
+                'bio' => $request->bio,
+                'is_active' => $request->is_active ?? $user->is_active,
+            ]);
 
             return response()->json([
-                'user' => $user,
-                'message' => 'Użytkownik zaktualizowany pomyślnie'
+                'success' => true,
+                'message' => 'Użytkownik został zaktualizowany pomyślnie',
+                'data' => $user
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('User update error: ' . $e->getMessage());
+            Log::error('Update user error: ' . $e->getMessage());
             
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'Nie udało się zaktualizować użytkownika'
             ], 500);
         }
     }
@@ -114,25 +217,27 @@ class AdminController extends Controller
     public function deleteUser(User $user)
     {
         try {
-            // Nie pozwalaj usunąć siebie
+            // Nie pozwól usunąć samego siebie
             if ($user->id === auth()->id()) {
                 return response()->json([
-                    'message' => 'Nie możesz usunąć swojego konta'
-                ], 403);
+                    'success' => false,
+                    'message' => 'Nie możesz usunąć swojego własnego konta'
+                ], 422);
             }
 
             $user->delete();
 
             return response()->json([
-                'message' => 'Użytkownik usunięty pomyślnie'
+                'success' => true,
+                'message' => 'Użytkownik został usunięty pomyślnie'
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('User delete error: ' . $e->getMessage());
+            Log::error('Delete user error: ' . $e->getMessage());
             
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'Nie udało się usunąć użytkownika'
             ], 500);
         }
     }
@@ -145,10 +250,10 @@ class AdminController extends Controller
                 'email' => 'required|email|unique:users,email',
                 'password' => 'required|string|min:8',
                 'role' => 'required|in:student,teacher,admin',
-                'phone' => 'nullable|string',
-                'instrument' => 'nullable|string',
-                'bio' => 'nullable|string',
-                'is_active' => 'boolean',
+                'phone' => 'nullable|string|max:20',
+                'instrument' => 'nullable|string|max:100',
+                'bio' => 'nullable|string|max:1000',
+                'is_active' => 'boolean'
             ]);
 
             $user = User::create([
@@ -163,16 +268,17 @@ class AdminController extends Controller
             ]);
 
             return response()->json([
-                'user' => $user,
-                'message' => 'Użytkownik utworzony pomyślnie'
+                'success' => true,
+                'message' => 'Użytkownik został utworzony pomyślnie',
+                'data' => $user
             ], 201);
-            
+
         } catch (\Exception $e) {
-            Log::error('User create error: ' . $e->getMessage());
+            Log::error('Create user error: ' . $e->getMessage());
             
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'Nie udało się utworzyć użytkownika'
             ], 500);
         }
     }
@@ -180,26 +286,22 @@ class AdminController extends Controller
     public function toggleUserStatus(User $user)
     {
         try {
-            // Nie pozwalaj dezaktywować siebie
-            if ($user->id === auth()->id()) {
-                return response()->json([
-                    'message' => 'Nie możesz dezaktywować swojego konta'
-                ], 403);
-            }
-
-            $user->update(['is_active' => !$user->is_active]);
-
-            return response()->json([
-                'user' => $user,
-                'message' => $user->is_active ? 'Użytkownik aktywowany' : 'Użytkownik dezaktywowany'
+            $user->update([
+                'is_active' => !$user->is_active
             ]);
-            
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status użytkownika został zmieniony pomyślnie',
+                'data' => $user
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('User status toggle error: ' . $e->getMessage());
+            Log::error('Toggle user status error: ' . $e->getMessage());
             
             return response()->json([
-                'error' => 'Internal server error',
-                'message' => $e->getMessage()
+                'success' => false,
+                'message' => 'Nie udało się zmienić statusu użytkownika'
             ], 500);
         }
     }

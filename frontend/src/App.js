@@ -1,7 +1,8 @@
-// src/App.js
 import React, { useState } from 'react';
 import { ArtyzLoadingAnimation } from './components/common/Loading';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { ToastContainer } from './components/common/Notifications';
 import Home from './pages/public/Home/Home';
 import './App.css';
 
@@ -10,15 +11,18 @@ function App() {
 
   return (
     <AuthProvider>
-      <>
-        {isLoading && (
-          <ArtyzLoadingAnimation 
-            onComplete={() => setIsLoading(false)}
-          />
-        )}
-        
-        {!isLoading && <Home />}
-      </>
+      <NotificationProvider>
+        <div className="App">
+          {isLoading && (
+            <ArtyzLoadingAnimation 
+              onComplete={() => setIsLoading(false)}
+            />
+          )}
+          
+          {!isLoading && <Home />}
+          <ToastContainer />
+        </div>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

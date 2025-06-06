@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\PendingRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -15,27 +16,51 @@ class AuthController extends Controller
         $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'instrument' => 'nullable|string',
-            'phone' => 'nullable|string',
+            'email' => 'required|email|unique:users,email|unique:pending_registrations,email',
+            'password' => 'required|string|min:8',
+            'password_confirmation' => 'required|same:password',
+            'phone' => 'nullable|string|max:20',
+            'instrument' => 'nullable|string|max:100',
+            'experience' => 'nullable|string|max:100',
         ]);
 
-        $user = User::create([
+        // Sprawdź czy email nie istnieje już w pending_registrations
+        $existingPending = PendingRegistration::where('email', $request->email)->first();
+        if ($existingPending) {
+            if ($existingPending->status === 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Twoja rejestracja oczekuje na akceptację administratora.'
+                ], 422);
+            } elseif ($existingPending->status === 'rejected') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Twoja poprzednia rejestracja została odrzucona. Skontaktuj się z administratorem.'
+                ], 422);
+            }
+        }
+
+        // Stwórz oczekującą rejestrację
+        $pendingRegistration = PendingRegistration::create([
             'name' => $request->firstName . ' ' . $request->lastName,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'student', // default role
-            'instrument' => $request->instrument,
             'phone' => $request->phone,
+            'instrument' => $request->instrument,
+            'experience' => $request->experience,
+            'role' => 'student', // Domyślnie student - administrator może to zmienić
+            'status' => 'pending',
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+        // Zwróć odpowiedź sukcesu
         return response()->json([
-            'user' => $user,
-            'token' => $token,
-            'message' => 'Rejestracja zakończona pomyślnie'
+            'success' => true,
+            'message' => 'Rejestracja została wysłana! Administrator sprawdzi Twoje dane i aktywuje konto w ciągu 24 godzin.',
+            'data' => [
+                'registration_id' => $pendingRegistration->id,
+                'email' => $pendingRegistration->email,
+                'status' => $pendingRegistration->status
+            ]
         ], 201);
     }
 

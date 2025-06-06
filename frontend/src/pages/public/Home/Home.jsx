@@ -29,7 +29,6 @@ const Home = () => {
 
   const renderPage = () => {
     switch(currentPage) {
-      // Public pages
       case 'about':
         return <About onNavigate={setCurrentPage} />;
       case 'courses':
@@ -39,11 +38,41 @@ const Home = () => {
       case 'contact':
         return <Contact onNavigate={setCurrentPage} />;
       
-      // Admin pages
       case 'admin-dashboard':
         return <AdminDashboard onNavigate={setCurrentPage} />;
       case 'admin-users':
         return <AdminUsers onNavigate={setCurrentPage} />;
+      case 'admin-registrations':
+        return <div className="min-h-screen bg-slate-900">
+          {/* Mini header */}
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700/50">
+            <div className="container mx-auto px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-light text-white">Zarządzaj rejestracjami</h1>
+                  <p className="text-slate-400 text-sm">Panel Administratora</p>
+                </div>
+                <button
+                  onClick={() => setCurrentPage('admin-dashboard')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300"
+                >
+                  ← Powrót
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="flex items-center justify-center" style={{height: 'calc(100vh - 120px)'}}>
+            <div className="text-center">
+              <div className="text-6xl mb-6">📋</div>
+              <h2 className="text-3xl text-white mb-4">Zarządzaj rejestracjami</h2>
+              <p className="text-slate-400 mb-8 max-w-md">
+                Tutaj będziesz mógł przeglądać, akceptować i odrzucać nowe rejestracje użytkowników.
+              </p>
+            </div>
+          </div>
+        </div>;
       
       // Student pages
       case 'student-dashboard':
