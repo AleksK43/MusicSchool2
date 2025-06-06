@@ -1,4 +1,4 @@
-# Backend Laravel
+# Backend Laravel - tylko niepotrzebne pliki
 /backend/vendor/
 /backend/node_modules/
 /backend/.env
@@ -7,9 +7,21 @@
 /backend/Homestead.json
 /backend/Homestead.yaml
 /backend/storage/*.key
+/backend/storage/app/*
+!/backend/storage/app/.gitkeep
+/backend/storage/framework/cache/*
+!/backend/storage/framework/cache/.gitkeep
+/backend/storage/framework/sessions/*
+!/backend/storage/framework/sessions/.gitkeep
+/backend/storage/framework/views/*
+!/backend/storage/framework/views/.gitkeep
+/backend/storage/logs/*
+!/backend/storage/logs/.gitkeep
 /backend/database/database.sqlite
+/backend/bootstrap/cache/*
+!/backend/bootstrap/cache/.gitkeep
 
-# Frontend React  
+# Frontend React - tylko build i dependencies
 /frontend/node_modules/
 /frontend/.pnp
 /frontend/.pnp.js

@@ -1,0 +1,239 @@
+alekskonopacki@MacBook-Pro src % tree
+.
+├── __tests__
+│   ├── components
+│   │   ├── admin
+│   │   ├── audio
+│   │   ├── common
+│   │   ├── forms
+│   │   ├── student
+│   │   ├── teacher
+│   │   └── ui
+│   ├── hooks
+│   ├── pages
+│   ├── services
+│   └── utils
+├── App.css
+├── App.js
+├── App.test.js
+├── assets
+│   ├── animations
+│   ├── audio
+│   │   ├── demos
+│   │   ├── exercises
+│   │   ├── metronome
+│   │   └── samples
+│   ├── fonts
+│   ├── icons
+│   │   ├── actions
+│   │   ├── instruments
+│   │   ├── navigation
+│   │   ├── social
+│   │   └── ui
+│   └── images
+│       ├── avatars
+│       ├── backgrounds
+│       ├── banners
+│       ├── gallery
+│       ├── instruments
+│       └── logos
+├── components
+│   ├── admin
+│   │   ├── Analytics
+│   │   ├── Billing
+│   │   ├── CourseManagement
+│   │   ├── Dashboard
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   └── index.js
+│   │   ├── Reports
+│   │   ├── Settings
+│   │   └── UserManagement
+│   ├── audio
+│   │   ├── Metronome
+│   │   ├── Player
+│   │   ├── PlaylistPlayer
+│   │   ├── Recorder
+│   │   ├── SheetMusic
+│   │   ├── TunerWidget
+│   │   └── Waveform
+│   ├── common
+│   │   ├── Button
+│   │   ├── Card
+│   │   ├── ErrorBoundary
+│   │   ├── Footer
+│   │   ├── Header
+│   │   │   └── Header.jsx
+│   │   ├── index.js
+│   │   ├── Loading
+│   │   │   ├── ArtyzLoadingAnimation.jsx
+│   │   │   └── index.js
+│   │   ├── Modal
+│   │   │   ├── CreateUserModal.jsx
+│   │   │   ├── index.js
+│   │   │   ├── LoginModal.jsx
+│   │   │   └── RegisterModal.jsx
+│   │   ├── SEO
+│   │   └── Toast
+│   ├── forms
+│   │   ├── ContactForm
+│   │   ├── EnrollmentForm
+│   │   ├── LessonBookingForm
+│   │   ├── LoginForm
+│   │   ├── PaymentForm
+│   │   ├── ProfileForm
+│   │   └── RegisterForm
+│   ├── navigation
+│   │   ├── Breadcrumb
+│   │   ├── MobileMenu
+│   │   ├── Navbar
+│   │   ├── Pagination
+│   │   └── Sidebar
+│   ├── sections
+│   │   ├── Features
+│   │   │   └── Features.jsx
+│   │   └── Hero
+│   │       └── Hero.jsx
+│   ├── student
+│   │   ├── Dashboard
+│   │   ├── Homework
+│   │   ├── LessonCard
+│   │   ├── PaymentHistory
+│   │   ├── Profile
+│   │   ├── ProgressChart
+│   │   └── Schedule
+│   ├── teacher
+│   │   ├── Calendar
+│   │   ├── Dashboard
+│   │   ├── GradeBook
+│   │   ├── LessonPlanner
+│   │   ├── Reports
+│   │   ├── StudentList
+│   │   └── StudentProgress
+│   └── ui
+│       ├── Avatar
+│       ├── Badge
+│       ├── Checkbox
+│       ├── DatePicker
+│       ├── FileUpload
+│       ├── Input
+│       ├── Radio
+│       ├── Select
+│       ├── Slider
+│       └── Textarea
+├── constants
+├── contexts
+│   └── AuthContext.js
+├── hooks
+│   ├── animation
+│   ├── api
+│   ├── audio
+│   ├── auth
+│   ├── form
+│   ├── realtime
+│   └── storage
+├── index.css
+├── index.js
+├── layouts
+│   ├── AdminLayout
+│   ├── AuthLayout
+│   ├── PublicLayout
+│   ├── StudentLayout
+│   └── TeacherLayout
+├── logo.svg
+├── pages
+│   ├── admin
+│   │   ├── Analytics
+│   │   ├── Billing
+│   │   ├── Courses
+│   │   ├── Dashboard
+│   │   ├── Reports
+│   │   ├── Settings
+│   │   ├── Students
+│   │   ├── Teachers
+│   │   └── Users
+│   │       └── AdminUsers.jsx
+│   ├── auth
+│   │   ├── EmailVerification
+│   │   ├── ForgotPassword
+│   │   ├── Login
+│   │   ├── Register
+│   │   └── ResetPassword
+│   ├── public
+│   │   ├── About
+│   │   │   └── About.jsx
+│   │   ├── Blog
+│   │   ├── Contact
+│   │   │   ├── Contact.jsx
+│   │   │   └── index.js
+│   │   ├── Courses
+│   │   │   ├── Courses.jsx
+│   │   │   └── index.js
+│   │   ├── FAQ
+│   │   ├── Home
+│   │   │   ├── Home.jsx
+│   │   │   └── index.js
+│   │   ├── index.js
+│   │   ├── Pricing
+│   │   └── Teachers
+│   │       ├── index.js
+│   │       └── Teachers.jsx
+│   ├── student
+│   │   ├── Billing
+│   │   ├── Dashboard
+│   │   ├── Homework
+│   │   ├── Lessons
+│   │   ├── Library
+│   │   ├── Profile
+│   │   ├── Progress
+│   │   └── Schedule
+│   └── teacher
+│       ├── Dashboard
+│       ├── LessonPlans
+│       ├── Profile
+│       ├── Reports
+│       ├── Resources
+│       ├── Schedule
+│       └── Students
+├── reportWebVitals.js
+├── services
+│   ├── analytics
+│   ├── api
+│   ├── audio
+│   ├── auth
+│   ├── AuthService.js
+│   ├── notifications
+│   ├── payment
+│   └── websocket
+├── setupTests.js
+├── store
+│   ├── middleware
+│   ├── selectors
+│   └── slices
+├── stories
+│   ├── components
+│   ├── layouts
+│   └── pages
+├── styles
+│   ├── animations
+│   ├── components
+│   ├── globals
+│   ├── responsive
+│   ├── themes
+│   └── utilities
+├── types
+│   ├── admin
+│   ├── api
+│   ├── audio
+│   ├── auth
+│   ├── common
+│   ├── forms
+│   ├── student
+│   └── teacher
+└── utils
+    ├── audio
+    ├── constants
+    ├── date
+    ├── formatting
+    ├── helpers
+    ├── storage
+    └── validation
