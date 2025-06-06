@@ -1,4 +1,3 @@
-// src/services/AuthService.js
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
 
 class AuthService {
@@ -28,7 +27,6 @@ class AuthService {
       console.log('🌐 API response status:', response.status);
 
       if (!response.ok) {
-        // Jeśli token jest nieważny (401), usuń go
         if (response.status === 401) {
           console.log('🌐 Unauthorized, removing token');
           localStorage.removeItem(this.tokenKey);
@@ -114,7 +112,6 @@ class AuthService {
       const response = await this.apiCall('/user');
       console.log('🔔 Current user response:', response);
       
-      // Sprawdź czy response ma user lub czy response samo w sobie jest userem
       if (response.user) {
         return response.user;
       } else if (response.id) {

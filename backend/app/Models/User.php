@@ -32,7 +32,6 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
-    // Metody sprawdzające role
     public function isAdmin()
     {
         return $this->role === 'admin';
@@ -48,7 +47,6 @@ class User extends Authenticatable
         return $this->role === 'student';
     }
 
-    // Relacje dla lekcji
     public function teacherLessons()
     {
         return $this->hasMany(Lesson::class, 'teacher_id');

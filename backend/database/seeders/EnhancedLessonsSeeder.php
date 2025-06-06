@@ -19,7 +19,6 @@ class EnhancedLessonsSeeder extends Seeder
             return;
         }
 
-        // Dodaj więcej użytkowników testowych
         $teacher2 = User::create([
             'name' => 'Marcin Kowalski',
             'email' => 'marcin@artyz.pl',
@@ -40,7 +39,6 @@ class EnhancedLessonsSeeder extends Seeder
 
         $now = now();
         $lessons = [
-            // PENDING - Oczekuje na potwierdzenie nauczyciela
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
@@ -66,7 +64,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 2',
             ],
 
-            // SCHEDULED - Zatwierdzone lekcje
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
@@ -94,7 +91,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 3',
             ],
 
-            // DZISIEJSZE LEKCJE
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student2->id,
@@ -109,7 +105,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 1',
             ],
 
-            // PENDING_STUDENT_APPROVAL - Nauczyciel zaproponował zmianę
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
@@ -125,7 +120,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'notes' => 'Propozycja nauczyciela: Czy możemy przenieść na wcześniejszą godzinę?'
             ],
 
-            // COMPLETED - Zakończone lekcje
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
@@ -152,12 +146,11 @@ class EnhancedLessonsSeeder extends Seeder
                 'instrument' => 'Gitara',
                 'notes' => 'Świetny postęp w nauce akordów. Student opanował podstawowe pozycje.',
                 'price' => 110.00,
-                'is_paid' => false, // Niepłacona lekcja
+                'is_paid' => false, 
                 'lesson_type' => 'individual',
                 'location' => 'Sala 2',
             ],
 
-            // CANCELLED - Anulowane lekcje
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,
@@ -173,7 +166,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 1',
             ],
 
-            // NO_SHOW - Nieobecności
             [
                 'teacher_id' => $teacher2->id,
                 'student_id' => $student->id,
@@ -189,7 +181,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 2',
             ],
 
-            // NADCHODZĄCE LEKCJE NA NASTĘPNY TYDZIEŃ
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student2->id,
@@ -217,22 +208,20 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 2',
             ],
 
-            // LEKCJA GRUPOWA
             [
                 'teacher_id' => $teacher->id,
-                'student_id' => $student->id, // W rzeczywistości byłaby relacja many-to-many
+                'student_id' => $student->id, 
                 'title' => 'Warsztat wokalny grupowy',
                 'description' => 'Warsztat dla zaawansowanych wokalistek',
                 'start_time' => $now->copy()->addDays(6)->setTime(18, 0),
                 'end_time' => $now->copy()->addDays(6)->setTime(19, 30),
                 'status' => Lesson::STATUS_SCHEDULED,
                 'instrument' => 'Wokal',
-                'price' => 80.00, // Niższa cena dla lekcji grupowej
+                'price' => 80.00, 
                 'lesson_type' => 'group',
                 'location' => 'Sala główna',
             ],
 
-            // WIĘCEJ PRZYKŁADÓW RÓŻNYCH STATUSÓW
             [
                 'teacher_id' => $teacher2->id,
                 'student_id' => $student2->id,
@@ -246,7 +235,6 @@ class EnhancedLessonsSeeder extends Seeder
                 'location' => 'Sala 2',
             ],
 
-            // STARA ZAKOŃCZONA LEKCJA
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,

@@ -83,7 +83,6 @@ class AdminController extends Controller
                 'role' => 'nullable|in:student,teacher'
             ]);
 
-            // Ustaw rolę jeśli została podana
             if ($request->role) {
                 $registration->role = $request->role;
                 $registration->save();
@@ -140,12 +139,10 @@ class AdminController extends Controller
         try {
             $query = User::query();
 
-            // Filtrowanie po roli
             if ($request->role && $request->role !== 'all') {
                 $query->where('role', $request->role);
             }
 
-            // Wyszukiwanie
             if ($request->search) {
                 $query->where(function($q) use ($request) {
                     $q->where('name', 'like', '%' . $request->search . '%')
@@ -153,7 +150,6 @@ class AdminController extends Controller
                 });
             }
 
-            // Sortowanie
             $sortBy = $request->sort_by ?? 'created_at';
             $sortOrder = $request->sort_order ?? 'desc';
             $query->orderBy($sortBy, $sortOrder);
@@ -217,7 +213,6 @@ class AdminController extends Controller
     public function deleteUser(User $user)
     {
         try {
-            // Nie pozwól usunąć samego siebie
             if ($user->id === auth()->id()) {
                 return response()->json([
                     'success' => false,

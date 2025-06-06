@@ -16,7 +16,6 @@ class StudentController extends Controller
         try {
             $student = auth()->user();
             
-            // Sprawdź czy użytkownik to student
             if (!$student->isStudent()) {
                 return response()->json([
                     'message' => 'Dostęp zabroniony. Wymagane uprawnienia studenta.'
@@ -25,7 +24,6 @@ class StudentController extends Controller
 
             $today = now();
 
-            // Statystyki
             $stats = [
                 'today_lessons' => Lesson::forStudent($student->id)->today()->count(),
                 'week_lessons' => Lesson::forStudent($student->id)->thisWeek()->count(),
@@ -45,14 +43,12 @@ class StudentController extends Controller
                     ->count(),
             ];
 
-            // Dzisiejsze lekcje
             $todayLessons = Lesson::forStudent($student->id)
                 ->today()
                 ->with('teacher')
                 ->orderBy('start_time')
                 ->get();
 
-            // Nadchodzące lekcje (następne 5)
             $upcomingLessons = Lesson::forStudent($student->id)
                 ->upcoming()
                 ->with('teacher')
@@ -60,7 +56,6 @@ class StudentController extends Controller
                 ->take(5)
                 ->get();
 
-            // Ostatnie lekcje
             $recentLessons = Lesson::forStudent($student->id)
                 ->where('status', 'completed')
                 ->with('teacher')
@@ -97,7 +92,6 @@ class StudentController extends Controller
                 ], 403);
             }
 
-            // Pobierz daty z requestu lub użyj domyślnych
             $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->get('end_date', now()->endOfMonth()->toDateString());
 
@@ -190,7 +184,6 @@ class StudentController extends Controller
 
             $query = Lesson::forStudent($student->id)->with('teacher');
 
-            // Filtry
             if ($request->has('status') && $request->status !== 'all') {
                 $query->where('status', $request->status);
             }
@@ -203,7 +196,6 @@ class StudentController extends Controller
                 $query->where('start_time', '<=', $request->date_to);
             }
 
-            // Sortowanie
             $sortBy = $request->get('sort_by', 'start_time');
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
@@ -242,7 +234,6 @@ class StudentController extends Controller
                 'lesson_type' => 'required|in:individual,group'
             ]);
 
-            // Sprawdź czy nauczyciel jest aktywny
             $teacher = User::where('role', 'teacher')
                 ->where('is_active', true)
                 ->find($request->teacher_id);
@@ -253,11 +244,9 @@ class StudentController extends Controller
                 ], 404);
             }
 
-            // Utwórz datę i czas rozpoczęcia
             $startDateTime = Carbon::parse($request->preferred_date . ' ' . $request->preferred_time);
             $endDateTime = $startDateTime->copy()->addMinutes($request->duration);
 
-            // Sprawdź czy termin nie koliduje z istniejącymi lekcjami
             $conflictingLesson = Lesson::where('teacher_id', $request->teacher_id)
                 ->where('status', '!=', 'cancelled')
                 ->where(function($query) use ($startDateTime, $endDateTime) {
@@ -276,7 +265,6 @@ class StudentController extends Controller
                 ], 422);
             }
 
-            // Utwórz lekcję ze statusem "pending"
             $lesson = Lesson::create([
                 'student_id' => $student->id,
                 'teacher_id' => $request->teacher_id,
@@ -284,15 +272,12 @@ class StudentController extends Controller
                 'description' => $request->message,
                 'start_time' => $startDateTime,
                 'end_time' => $endDateTime,
-                'status' => 'pending', // Czeka na akceptację nauczyciela
+                'status' => 'pending',
                 'lesson_type' => $request->lesson_type,
                 'location' => 'Do ustalenia',
-                'price' => null, // Ustawi nauczyciel
+                'price' => null, 
                 'is_paid' => false
             ]);
-
-            // Możesz tutaj dodać wysyłanie powiadomienia do nauczyciela
-            // event(new LessonRequested($lesson));
 
             return response()->json([
                 'message' => 'Prośba o lekcję została wysłana do nauczyciela.',
@@ -314,14 +299,12 @@ class StudentController extends Controller
         try {
             $student = auth()->user();
             
-            // Sprawdź czy lekcja należy do studenta
             if ($lesson->student_id !== $student->id) {
                 return response()->json([
                     'message' => 'Nie masz uprawnień do anulowania tej lekcji.'
                 ], 403);
             }
 
-            // Sprawdź czy można anulować (np. min. 24h wcześniej)
             if ($lesson->start_time->diffInHours(now()) < 24) {
                 return response()->json([
                     'message' => 'Lekcję można anulować minimum 24 godziny wcześniej.'
@@ -337,7 +320,6 @@ class StudentController extends Controller
             $lesson->update(['status' => 'cancelled']);
             $lesson->load('teacher');
 
-            // TODO: Wyślij powiadomienie do nauczyciela
 
             return response()->json([
                 'lesson' => $lesson,
@@ -365,7 +347,6 @@ class StudentController extends Controller
                 ], 403);
             }
 
-            // Pobierz dostępnych nauczycieli
             $teachers = User::where('role', 'teacher')
                 ->where('is_active', true)
                 ->select(['id', 'name', 'email', 'instrument', 'bio'])
@@ -412,14 +393,12 @@ class StudentController extends Controller
             $startOfDay = $date->copy()->startOfDay();
             $endOfDay = $date->copy()->endOfDay();
 
-            // Pobierz zajęte sloty
             $bookedLessons = Lesson::forTeacher($teacher->id)
                 ->where('status', '!=', 'cancelled')
                 ->whereBetween('start_time', [$startOfDay, $endOfDay])
                 ->select(['start_time', 'end_time'])
                 ->get();
 
-            // Generuj dostępne sloty (przykład: 9:00-20:00, co 30 min)
             $availableSlots = [];
             $currentTime = $startOfDay->copy()->setTime(9, 0);
             $endTime = $startOfDay->copy()->setTime(20, 0);
@@ -427,7 +406,6 @@ class StudentController extends Controller
             while ($currentTime < $endTime) {
                 $slotEnd = $currentTime->copy()->addMinutes(45); // 45 min slot
                 
-                // Sprawdź czy slot nie koliduje z zajętymi
                 $isAvailable = true;
                 foreach ($bookedLessons as $lesson) {
                     if ($currentTime < $lesson->end_time && $slotEnd > $lesson->start_time) {
@@ -444,7 +422,7 @@ class StudentController extends Controller
                     ];
                 }
 
-                $currentTime->addMinutes(30); // Co 30 min nowy slot
+                $currentTime->addMinutes(30); 
             }
 
             return response()->json([
@@ -479,7 +457,6 @@ class StudentController extends Controller
                 ], 422);
             }
 
-            // Sprawdź ponownie konflikty w kalendarzu studenta
             $conflict = Lesson::forStudent($student->id)
                 ->where('id', '!=', $lesson->id)
                 ->where('status', '!=', Lesson::STATUS_CANCELLED)
@@ -501,8 +478,6 @@ class StudentController extends Controller
 
             $lesson->update(['status' => Lesson::STATUS_SCHEDULED]);
             $lesson->load('teacher');
-
-            // TODO: Wyślij powiadomienie do nauczyciela
 
             return response()->json([
                 'lesson' => $lesson,
@@ -545,8 +520,6 @@ class StudentController extends Controller
                 'notes' => $request->reason ? 'Student odrzucił zmianę: ' . $request->reason : 'Student odrzucił zmianę terminu'
             ]);
             $lesson->load('teacher');
-
-            // TODO: Wyślij powiadomienie do nauczyciela
 
             return response()->json([
                 'lesson' => $lesson,
@@ -604,7 +577,6 @@ class StudentController extends Controller
                 ], 403);
             }
 
-            // Walidacja roku i miesiąca
             if (!is_numeric($year) || !is_numeric($month) || $month < 1 || $month > 12) {
                 return response()->json([
                     'message' => 'Nieprawidłowy rok lub miesiąc.'
@@ -651,7 +623,6 @@ class StudentController extends Controller
                 ], 403);
             }
 
-            // Pobierz wszystkich aktywnych nauczycieli
             $teachers = User::where('role', 'teacher')
                 ->where('is_active', true)
                 ->select('id', 'name', 'email', 'phone', 'instrument', 'bio')
@@ -701,14 +672,12 @@ class StudentController extends Controller
             $date = Carbon::parse($request->date);
             $duration = $request->get('duration', 45); // domyślnie 45 minut
 
-            // Pobierz istniejące lekcje nauczyciela na ten dzień
             $existingLessons = Lesson::forTeacher($teacherId)
                 ->whereDate('start_time', $date)
                 ->where('status', '!=', 'cancelled')
                 ->select('start_time', 'end_time')
                 ->get();
 
-            // Generuj dostępne sloty (np. 9:00-17:00)
             $availableSlots = [];
             $startHour = 9;
             $endHour = 17;
@@ -718,7 +687,6 @@ class StudentController extends Controller
                     $slotStart = $date->copy()->setTime($hour, $minute);
                     $slotEnd = $slotStart->copy()->addMinutes($duration);
 
-                    // Sprawdź czy slot nie koliduje z istniejącymi lekcjami
                     $isAvailable = true;
                     foreach ($existingLessons as $lesson) {
                         $lessonStart = Carbon::parse($lesson->start_time);
@@ -732,7 +700,6 @@ class StudentController extends Controller
                         }
                     }
 
-                    // Sprawdź czy slot nie wykracza poza godziny pracy
                     if ($slotEnd->hour >= $endHour) {
                         $isAvailable = false;
                     }

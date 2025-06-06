@@ -25,7 +25,6 @@ class TeacherController extends Controller
             
             Log::info('User role: ' . $teacher->role);
             
-            // Sprawdź czy użytkownik to nauczyciel
             if (!$teacher->isTeacher()) {
                 Log::warning('User is not teacher');
                 return response()->json([
@@ -37,7 +36,6 @@ class TeacherController extends Controller
             $startOfWeek = $today->copy()->startOfWeek();
             $endOfWeek = $today->copy()->endOfWeek();
 
-            // Statystyki
             $stats = [
                 'today_lessons' => Lesson::forTeacher($teacher->id)->today()->count(),
                 'week_lessons' => Lesson::forTeacher($teacher->id)->thisWeek()->count(),
@@ -51,14 +49,12 @@ class TeacherController extends Controller
                     ->count(),
             ];
 
-            // Dzisiejsze lekcje
             $todayLessons = Lesson::forTeacher($teacher->id)
                 ->today()
                 ->with('student')
                 ->orderBy('start_time')
                 ->get();
 
-            // Nadchodzące lekcje (następne 5)
             $upcomingLessons = Lesson::forTeacher($teacher->id)
                 ->upcoming()
                 ->with('student')
@@ -95,7 +91,6 @@ class TeacherController extends Controller
                 ], 403);
             }
 
-            // Pobierz daty z requestu lub użyj domyślnych
             $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
             $endDate = $request->get('end_date', now()->endOfMonth()->toDateString());
 
@@ -188,7 +183,6 @@ class TeacherController extends Controller
 
             $query = Lesson::forTeacher($teacher->id)->with('student');
 
-            // Filtry
             if ($request->has('status') && $request->status !== 'all') {
                 $query->where('status', $request->status);
             }
@@ -205,7 +199,6 @@ class TeacherController extends Controller
                 $query->where('student_id', $request->student_id);
             }
 
-            // Sortowanie
             $sortBy = $request->get('sort_by', 'start_time');
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
@@ -247,7 +240,6 @@ class TeacherController extends Controller
                 'location' => 'nullable|string',
             ]);
 
-            // Sprawdź czy student istnieje i ma rolę student
             $student = User::find($request->student_id);
             if (!$student || !$student->isStudent()) {
                 return response()->json([
@@ -255,7 +247,6 @@ class TeacherController extends Controller
                 ], 422);
             }
 
-            // Sprawdź konflikty w kalendarzu nauczyciela
             $conflict = Lesson::forTeacher($teacher->id)
                 ->where('status', 'scheduled')
                 ->where(function($query) use ($request) {
@@ -310,7 +301,6 @@ class TeacherController extends Controller
         try {
             $teacher = auth()->user();
             
-            // Sprawdź czy lekcja należy do nauczyciela
             if ($lesson->teacher_id !== $teacher->id) {
                 return response()->json([
                     'message' => 'Nie masz uprawnień do edycji tej lekcji.'
@@ -385,7 +375,6 @@ class TeacherController extends Controller
                 ], 403);
             }
 
-            // Pobierz studentów, którzy mają/mieli lekcje z tym nauczycielem
             $students = User::where('role', 'student')
                 ->whereHas('studentLessons', function($query) use ($teacher) {
                     $query->where('teacher_id', $teacher->id);
@@ -457,7 +446,6 @@ class TeacherController extends Controller
                 ], 422);
             }
 
-            // Sprawdź ponownie konflikty (mogły się pojawić w międzyczasie)
             $conflict = Lesson::forTeacher($teacher->id)
                 ->where('id', '!=', $lesson->id)
                 ->where('status', 'scheduled')
@@ -479,8 +467,6 @@ class TeacherController extends Controller
 
             $lesson->update(['status' => 'scheduled']);
             $lesson->load('student');
-
-            // TODO: Wyślij powiadomienie do studenta
 
             return response()->json([
                 'lesson' => $lesson,
@@ -524,8 +510,6 @@ class TeacherController extends Controller
             ]);
             $lesson->load('student');
 
-            // TODO: Wyślij powiadomienie do studenta z powodem
-
             return response()->json([
                 'lesson' => $lesson,
                 'message' => 'Prośba o lekcję została odrzucona.'
@@ -564,7 +548,6 @@ class TeacherController extends Controller
                 'message' => 'nullable|string|max:500'
             ]);
 
-            // Sprawdź konflikty dla nowego terminu
             $conflict = Lesson::forTeacher($teacher->id)
                 ->where('id', '!=', $lesson->id)
                 ->where('status', 'scheduled')
@@ -587,12 +570,11 @@ class TeacherController extends Controller
             $lesson->update([
                 'start_time' => $request->new_start_time,
                 'end_time' => $request->new_end_time,
-                'status' => 'pending_student_approval', // Nowy status
+                'status' => 'pending_student_approval',
                 'notes' => $request->message ? 'Propozycja nauczyciela: ' . $request->message : 'Nauczyciel zaproponował inny termin'
             ]);
             $lesson->load('student');
 
-            // TODO: Wyślij powiadomienie do studenta o nowym terminie
 
             return response()->json([
                 'lesson' => $lesson,
@@ -628,19 +610,16 @@ class TeacherController extends Controller
             $startDate = Carbon::parse($request->start_date);
             $endDate = Carbon::parse($request->end_date);
 
-            // Pobierz zajęte terminy
             $bookedLessons = Lesson::forTeacher($teacher->id)
                 ->where('status', '!=', 'cancelled')
                 ->whereBetween('start_time', [$startDate, $endDate])
                 ->select(['start_time', 'end_time', 'status'])
                 ->get();
 
-            // Generuj plan dostępności (przykład: Pn-Pt 9:00-20:00)
             $availability = [];
             $current = $startDate->copy();
 
             while ($current <= $endDate) {
-                // Pomiń weekendy (opcjonalnie)
                 if ($current->isWeekday()) {
                     $dayStart = $current->copy()->setTime(9, 0);
                     $dayEnd = $current->copy()->setTime(20, 0);
@@ -651,7 +630,6 @@ class TeacherController extends Controller
                     while ($currentSlot < $dayEnd) {
                         $slotEnd = $currentSlot->copy()->addMinutes(45);
                         
-                        // Sprawdź czy slot jest zajęty
                         $isBooked = false;
                         foreach ($bookedLessons as $lesson) {
                             if ($currentSlot < $lesson->end_time && $slotEnd > $lesson->start_time) {
@@ -709,7 +687,6 @@ class TeacherController extends Controller
                 ], 403);
             }
 
-            // Walidacja roku i miesiąca
             if (!is_numeric($year) || !is_numeric($month) || $month < 1 || $month > 12) {
                 return response()->json([
                     'message' => 'Nieprawidłowy rok lub miesiąc.'

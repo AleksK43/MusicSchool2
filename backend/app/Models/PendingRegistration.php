@@ -33,7 +33,6 @@ class PendingRegistration extends Model
         'approved_at' => 'datetime',
     ];
 
-    // Scopes
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
@@ -55,14 +54,12 @@ class PendingRegistration extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    // Methods
     public function approve($adminId, $notes = null)
     {
-        // Create actual user
         $user = User::create([
             'name' => $this->name,
             'email' => $this->email,
-            'password' => $this->password, // Already hashed
+            'password' => $this->password, 
             'phone' => $this->phone,
             'instrument' => $this->instrument,
             'experience' => $this->experience,
@@ -70,7 +67,6 @@ class PendingRegistration extends Model
             'is_active' => true,
         ]);
 
-        // Update pending registration
         $this->update([
             'status' => 'approved',
             'approved_by' => $adminId,

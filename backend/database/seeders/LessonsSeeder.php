@@ -18,7 +18,6 @@ class LessonsSeeder extends Seeder
             return;
         }
 
-        // Lekcje na ten tydzień
         $startOfWeek = now()->startOfWeek();
         
         $lessons = [
@@ -48,7 +47,6 @@ class LessonsSeeder extends Seeder
                 'lesson_type' => 'individual',
                 'location' => 'Sala 1',
             ],
-            // Dzisiejsza lekcja
             [
                 'teacher_id' => $teacher->id,
                 'student_id' => $student->id,

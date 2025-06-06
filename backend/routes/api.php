@@ -91,7 +91,6 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Shared routes (dla wszystkich zalogowanych użytkowników)
     Route::prefix('shared')->group(function () {
-        // Pobierz dostępnych nauczycieli (dla studentów i adminów)
         Route::get('/teachers', fn() => response()->json([
             'teachers' => \App\Models\User::where('role', 'teacher')
                 ->where('is_active', true)
@@ -99,7 +98,6 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->get()
         ]));
         
-        // Pobierz studentów (dla nauczycieli i adminów)
         Route::get('/students', fn() => response()->json([
             'students' => \App\Models\User::where('role', 'student')
                 ->where('is_active', true)
@@ -109,7 +107,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Fallback route
 Route::fallback(fn() => response()->json([
     'message' => 'Route not found'
 ], 404));
